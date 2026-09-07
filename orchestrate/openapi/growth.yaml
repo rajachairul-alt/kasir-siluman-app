@@ -1,0 +1,99 @@
+openapi: "3.0.3"
+info:
+  title: "Kasir Siluman — Growth Agent Tool"
+  description: |
+    Generates poster copy and an image-generation prompt for the seller based
+    on their recent transaction data.  Called by the watsonx Orchestrate
+    "Growth" agent.
+
+    The endpoint internally fetches real transaction context via
+    GET /api/promo/context, then calls the Langflow Generative Promo pipeline
+    (Prompt Template → IBM watsonx.ai Granite → Structured Output Parser).
+    The seller never types free text — context is always derived from real data.
+  version: "1.0.0"
+
+servers:
+  - url: "https://dolphin-nutty-slimness.ngrok-free.dev"
+
+paths:
+  /api/promo/generate:
+    post:
+      operationId: "generatePromo"
+      summary: "Generate promotional text and image prompt from transaction data"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PromoContext"
+      responses:
+        "200":
+          description: "Promo content generated"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/PromoResult"
+        "400":
+          description: "Invalid PromoContext"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: "Langflow environment not configured"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: "Langflow pipeline call failed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    RecentItem:
+      type: object
+      required: [itemLabel, count]
+      properties:
+        itemLabel:
+          type: string
+          description: "Name of the item sold"
+        count:
+          type: integer
+          description: "Number of times this item was sold in the session"
+
+    PromoContext:
+      type: object
+      required: [merchantName, recentItems]
+      properties:
+        merchantName:
+          type: string
+          description: "Merchant display name"
+        recentItems:
+          type: array
+          items:
+            $ref: "#/components/schemas/RecentItem"
+          description: "Top items sold, sorted by frequency (descending)"
+
+    PromoResult:
+      type: object
+      required: [posterText, imagePrompt]
+      properties:
+        posterText:
+          type: string
+          description: "Indonesian-language promotional text ready to post on WhatsApp / IG"
+        imagePrompt:
+          type: string
+          description: |
+            English-language image generation prompt for the seller to paste into
+            an image tool (e.g. Adobe Firefly, DALL·E, Stable Diffusion)
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string

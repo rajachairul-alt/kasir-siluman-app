@@ -1,0 +1,91 @@
+openapi: "3.0.3"
+info:
+  title: "Kasir Siluman — Listener Agent Tool"
+  description: |
+    Extracts a price/item event from a recorded audio clip captured by the
+    seller's device.  Called by the watsonx Orchestrate "Listener" agent.
+
+    Authentication: multipart/form-data upload — the Langflow pipeline handles
+    the actual STT+LLM chain (Speech-to-Text Gemini → watsonx.ai Granite →
+    Structured Output Parser).  The LANGFLOW_API_KEY credential must be
+    registered in the Orchestrate credential vault and forwarded via the
+    Next.js server (the browser never sees it).
+  version: "1.0.0"
+
+servers:
+  - url: "https://dolphin-nutty-slimness.ngrok-free.dev"
+
+paths:
+  /api/voice/extract:
+    post:
+      operationId: "extractVoiceTransaction"
+      summary: "Extract price event from audio"
+      description: |
+        Receives a recorded audio blob, forwards it to the Langflow
+        Voice-to-Transaction pipeline, and returns the extracted amount,
+        item label, confidence, and whether the utterance is a closing report.
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              type: object
+              required: [audio]
+              properties:
+                audio:
+                  type: string
+                  format: binary
+                  description: "Recorded audio blob (webm, ogg, wav, or m4a)"
+      responses:
+        "200":
+          description: "Extraction succeeded"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/VoiceExtractionResult"
+        "400":
+          description: "Missing or empty audio field"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: "Langflow environment not configured"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: "Langflow pipeline call failed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    VoiceExtractionResult:
+      type: object
+      properties:
+        amount:
+          type: integer
+          description: "Extracted price in Rupiah (may be absent if not detected)"
+        itemLabel:
+          type: string
+          description: "Item name extracted from the utterance"
+        confidence:
+          type: number
+          format: float
+          minimum: 0
+          maximum: 1
+          description: "Extraction confidence (0–1)"
+        isClosingReport:
+          type: boolean
+          description: "True if the utterance is a 'tutup buku' total, not a sale price"
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string

@@ -1,0 +1,88 @@
+// Kasir Siluman — data model
+// Mirrors the TransactionEvent / DailyLedger shapes from the PRD (section 9,
+// System Logic & Data Model). SQLite is enough to build and demo the MVP;
+// swap the datasource to Postgres later without touching the app code.
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model Merchant {
+  id        String    @id @default(cuid())
+  name      String
+  cartType  String    @default("gerobak") // "gerobak" | "stand"
+  createdAt DateTime  @default(now())
+  sessions  Session[]
+}
+
+// One "Buka Lapak -> Tutup Buku" cycle (see PRD, User Workflow)
+model Session {
+  id                  String        @id @default(cuid())
+  merchant            Merchant      @relation(fields: [merchantId], references: [id])
+  merchantId          String
+  openedAt            DateTime      @default(now())
+  closedAt            DateTime?
+  status              String        @default("OPEN") // OPEN | RECONCILED | FLAGGED
+  qrisTotal           Int           @default(0) // in Rupiah, sum of qris events, exact
+  voiceCashEstimate   Int           @default(0) // in Rupiah, sum of voice-sourced cash events
+  closingReportTotal  Int? // Rupiah, the seller's spoken "tutup buku" total
+  varianceAmount      Int? // Rupiah, |voiceCashEstimate - closingReportTotal|
+  transactions        Transaction[]
+}
+
+// A single captured event: either a QRIS payment or a voice-extracted price.
+// Never a number typed in after the fact — see PRD, Core Concept & Trust Highlight.
+model Transaction {
+  id                 String   @id @default(cuid())
+  session            Session  @relation(fields: [sessionId], references: [id])
+  sessionId          String
+  source             String   // "qris" | "voice"
+  amount             Int      // Rupiah
+  itemLabel          String?
+  confidence         Float?   // only set for voice-sourced events (0-1)
+  timestamp          DateTime @default(now())
+  /// Unique ID from the QRIS aggregator. Used for idempotency: if the aggregator
+  /// retries the webhook, this field prevents double-counting.
+  /// TODO: add a @@unique constraint once a real aggregator is wired in and the
+  /// field is always populated.
+  qrisTransactionId  String?
+}
+
+// Proposed monthly net-profit savings — runs once a month, needs the
+// seller's confirmation, and stays locked until the next cycle.
+model SavingsProposal {
+  id               String   @id @default(cuid())
+  merchantId       String
+  month            String   // "2026-09"
+  netProfit        Int
+  suggestedAmount  Int
+  status           String   @default("PENDING_SELLER_CONFIRMATION") // PENDING_SELLER_CONFIRMATION | CONFIRMED | DECLINED
+  lockedUntil      DateTime
+  createdAt        DateTime @default(now())
+
+  /// Ensures at most one proposal per merchant per month.
+  /// Prevents generate-and-overwrite from silently wiping a seller's
+  /// confirm/decline decision.
+  @@unique([merchantId, month])
+}
+
+// Append-only governance log — every reconciliation decision and savings
+// status change is written here so the owner can see what happened and when.
+// Also the data source for the "governance layer" demo in the dashboard.
+//
+// Privacy rule (BOB_BRIEF.md): `detail` must be a short summary string only —
+// never raw audio data, full transaction payloads, or any PII.
+model AuditLog {
+  id         String   @id @default(cuid())
+  agentName  String   // "Listener" | "Payment-Event" | "Reconciliation" | "Radar Tetangga" | "Growth"
+  action     String   // e.g. "session.closed", "savings.confirmed", "qris.received"
+  entityId   String   // id of the relevant session / proposal / transaction
+  merchantId String?
+  detail     String?  // short summary only — no raw payloads or PII
+  createdAt  DateTime @default(now())
+}

@@ -1,0 +1,17 @@
+node_modules/
+.next/
+out/
+build/
+dist/
+.env
+.env*.local
+*.log
+.DS_Store
+prisma/dev.db
+prisma/dev.db-journal
+next-env.d.ts
+*.tsbuildinfo
+
+# Internal AI-coding-agent build briefs — not part of the public submission
+BOB_BRIEF.md
+BOB_TASK_*.md

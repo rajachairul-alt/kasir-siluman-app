@@ -1,0 +1,43 @@
+openapi: 3.0.0
+info:
+  title: Kasir Siluman Audit Log
+  version: "1.0"
+  description: Baca log audit transaksi (read-only) untuk agent pengawas Payment-Event.
+servers:
+  - url: "https://dolphin-nutty-slimness.ngrok-free.dev"
+security:
+  - internalSecret: []
+paths:
+  /api/internal/audit-log:
+    get:
+      operationId: get_audit_log
+      summary: Ambil daftar entri audit log terbaru untuk diperiksa agent pengawas.
+      description: >
+        Mengembalikan daftar event transaksi (buka sesi, konfirmasi, tutup sesi)
+        yang tercatat di AuditLog, dipakai agent Payment-Event untuk memantau
+        anomali. Endpoint ini dilindungi header rahasia internal.
+      parameters:
+        - name: limit
+          in: query
+          required: false
+          schema:
+            type: integer
+            default: 50
+      responses:
+        "200":
+          description: Daftar entri audit log
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  entries:
+                    type: array
+                    items:
+                      type: object
+components:
+  securitySchemes:
+    internalSecret:
+      type: apiKey
+      in: header
+      name: x-orchestrate-internal-secret

@@ -1,0 +1,103 @@
+openapi: "3.0.3"
+info:
+  title: "Kasir Siluman — Reconciliation Agent Tool"
+  description: |
+    Closes a session ("Tutup Buku") and records the reconciliation result.
+    Called by the watsonx Orchestrate "Reconciliation" agent.
+
+    The endpoint compares the seller's spoken closing total against the
+    independently-captured QRIS and voice-estimated totals, then sets the
+    session status to RECONCILED or FLAGGED.  An AuditLog entry is written
+    automatically after every successful close.
+  version: "1.0.0"
+
+servers:
+  - url: "https://dolphin-nutty-slimness.ngrok-free.dev"
+
+paths:
+  /api/session/{id}/close:
+    post:
+      operationId: "closeSession"
+      summary: "Close a session and reconcile totals"
+      description: |
+        Marks the session as RECONCILED (variance within tolerance) or FLAGGED
+        (variance exceeds tolerance).  Idempotent guard: returns 409 if the
+        session is already closed.
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+          description: "Session CUID"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/CloseSessionRequest"
+      responses:
+        "200":
+          description: "Session closed successfully"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/SessionResult"
+        "400":
+          description: "Missing or invalid closingReportTotal"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: "Session not found"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "409":
+          description: "Session already closed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    CloseSessionRequest:
+      type: object
+      required: [closingReportTotal]
+      properties:
+        closingReportTotal:
+          type: integer
+          minimum: 0
+          description: "Seller's spoken closing total in Rupiah"
+
+    SessionResult:
+      type: object
+      properties:
+        id:
+          type: string
+        merchantId:
+          type: string
+        status:
+          type: string
+          enum: [RECONCILED, FLAGGED]
+        qrisTotal:
+          type: integer
+        voiceCashEstimate:
+          type: integer
+        closingReportTotal:
+          type: integer
+        varianceAmount:
+          type: integer
+        closedAt:
+          type: string
+          format: date-time
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string

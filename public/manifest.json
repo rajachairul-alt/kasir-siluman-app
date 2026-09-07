@@ -1,0 +1,14 @@
+{
+  "name": "Kasir Siluman",
+  "short_name": "Kasir Siluman",
+  "description": "Copilot finansial otomatis untuk pedagang gerobak & UMKM mikro",
+  "start_url": "/session",
+  "display": "standalone",
+  "background_color": "#F5EFE0",
+  "theme_color": "#1F3A56",
+  "icons": [
+    { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

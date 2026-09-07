@@ -1,0 +1,91 @@
+openapi: "3.0.3"
+info:
+  title: "Kasir Siluman — Radar Tetangga Agent Tool"
+  description: |
+    Returns the anonymous average price for a given item label across nearby
+    merchants.  Called by the watsonx Orchestrate "Radar Tetangga" agent.
+
+    The aggregation (average, sample size) is computed deterministically in a
+    Langflow Python component — never by an LLM — and results are suppressed
+    when fewer than 2 merchants have sold the item (privacy rule: never expose
+    a single merchant's price as an "average").
+
+    Authentication: none — this is a public endpoint.  The Langflow pipeline
+    itself calls /api/internal/item-prices with RADAR_INTERNAL_SECRET, which
+    must be registered in the Orchestrate credential vault and set as a Langflow
+    Global Variable.
+  version: "1.0.0"
+
+servers:
+  - url: "https://dolphin-nutty-slimness.ngrok-free.dev"
+
+paths:
+  /api/radar:
+    post:
+      operationId: "getNeighborhoodPricing"
+      summary: "Get average price for an item from nearby merchants"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/RadarRequest"
+      responses:
+        "200":
+          description: "Average price found (at least 2 merchants)"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/NeighborhoodPricing"
+        "204":
+          description: "Insufficient data (fewer than 2 merchants have sold this item)"
+        "400":
+          description: "Missing itemLabel"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "500":
+          description: "Langflow environment not configured"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "502":
+          description: "Langflow pipeline call failed"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
+components:
+  schemas:
+    RadarRequest:
+      type: object
+      required: [itemLabel]
+      properties:
+        itemLabel:
+          type: string
+          description: "Item name to look up (e.g. 'bakso', 'es teh')"
+
+    NeighborhoodPricing:
+      type: object
+      properties:
+        itemLabel:
+          type: string
+        averagePrice:
+          type: integer
+          description: "Average price in Rupiah across sampleSize merchants"
+        sampleSize:
+          type: integer
+          description: "Number of distinct merchants contributing to the average"
+        radius:
+          type: string
+          description: "Human-readable radius description (optional)"
+
+    ErrorResponse:
+      type: object
+      required: [error]
+      properties:
+        error:
+          type: string
