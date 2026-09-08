@@ -176,10 +176,25 @@ export default function DashboardPage() {
     .filter((p) => p.status === "CONFIRMED" && p.month === thisMonth)
     .reduce((sum, p) => sum + p.suggestedAmount, 0);
 
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    window.location.href = "/owner-login";
+  }
+
   return (
     <main className="mx-auto min-h-screen max-w-3xl px-5 py-8">
-      <h1 className="text-2xl font-bold text-navy">Kasir Siluman</h1>
-      <p className="mb-6 text-sm text-[#6B6458]">Tampilan pemilik — pantauan jarak jauh</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-navy">Kasir Siluman</h1>
+          <p className="text-sm text-[#6B6458]">Tampilan pemilik — pantauan jarak jauh</p>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="rounded-lg border border-black/10 bg-white px-3 py-1.5 text-xs font-medium text-[#6B6458] shadow-sm transition hover:bg-black/5"
+        >
+          Keluar
+        </button>
+      </div>
 
       {/* ── FLAGGED alert banner ─────────────────────────────────────────────
           PRD section 4: gaps must be visible to the owner "as-is", not hidden

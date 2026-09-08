@@ -24,7 +24,11 @@ import { generatePromo, type PromoResult } from "@/lib/generativePromo";
 //   2. The useEffect that watches `isOpen` calls stopRecording() and
 //      releases the MediaStream the moment the session leaves OPEN status.
 
-const DEMO_MERCHANT_ID = "demo-merchant";
+function readCookie(name: string): string | null {
+  if (typeof document === "undefined") return null;
+  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
+  return match ? decodeURIComponent(match[1]) : null;
+}
 
 interface Transaction {
   id: string;
@@ -86,6 +90,8 @@ function formatMonth(ym: string): string {
 }
 
 export default function SessionPage() {
+  const [merchantId, setMerchantId] = useState<string | null>(null);
+  const [merchantName, setMerchantName] = useState<string>("");
   const [session, setSession] = useState<SessionState | null>(null);
   const [qrisAmount, setQrisAmount] = useState("15000");
   const [closingTotal, setClosingTotal] = useState("");
@@ -118,6 +124,17 @@ export default function SessionPage() {
 
   const isOpen = session?.status === "OPEN";
 
+  // ── Identitas pedagang dari cookie login (lihat /login) ────────────────────
+  useEffect(() => {
+    setMerchantId(readCookie("ks_merchant_id"));
+    setMerchantName(readCookie("ks_merchant_name") ?? "");
+  }, []);
+
+  async function handleLogout() {
+    await fetch("/api/auth/logout", { method: "POST" }).catch(() => {});
+    window.location.href = "/login";
+  }
+
   // ── PRIVACY ENFORCEMENT ───────────────────────────────────────────────────
   // Stop and release the microphone the instant the session is no longer OPEN.
   // This covers two paths: explicit "Tutup Buku" and any external status change
@@ -135,7 +152,8 @@ export default function SessionPage() {
 
   // ── Fetch pending savings proposal on mount ───────────────────────────────
   useEffect(() => {
-    fetch(`/api/savings?merchantId=${encodeURIComponent(DEMO_MERCHANT_ID)}`)
+    if (!merchantId) return;
+    fetch(`/api/savings?merchantId=${encodeURIComponent(merchantId)}`)
       .then((r) => r.json())
       .then((proposals: SavingsProposal[]) => {
         const pending = proposals.find(
@@ -146,7 +164,7 @@ export default function SessionPage() {
       .catch(() => {
         // Non-critical — savings panel stays hidden on fetch error.
       });
-  }, []);
+  }, [merchantId]);
 
   // ── Helpers ───────────────────────────────────────────────────────────────
   function stopRecording() {
@@ -164,10 +182,6 @@ export default function SessionPage() {
     setRecordingStatus((prev) => (prev === "processing" ? prev : "idle"));
   }
 
-  async function ensureMerchant() {
-    await fetch("/api/dev/ensure-merchant", { method: "POST" }).catch(() => {});
-  }
-
   async function refreshSession(id: string) {
     const res = await fetch(`/api/session`);
     const all: SessionState[] = await res.json();
@@ -177,12 +191,12 @@ export default function SessionPage() {
 
   // ── Session lifecycle ─────────────────────────────────────────────────────
   async function bukaLapak() {
+    if (!merchantId) return;
     setLoading(true);
-    await ensureMerchant();
     const res = await fetch("/api/session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ merchantId: DEMO_MERCHANT_ID }),
+      body: JSON.stringify({ merchantId }),
     });
     const data = await res.json();
     setSession({ ...data, transactions: [] });
@@ -436,13 +450,25 @@ export default function SessionPage() {
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <main className="mx-auto min-h-screen max-w-md px-5 py-8">
-      <h1 className="text-2xl font-bold text-navy">Kasir Siluman</h1>
-      <p className="mb-6 text-sm text-[#6B6458]">Tampilan penjual</p>
+      <div className="mb-6 flex items-start justify-between">
+        <div>
+          <h1 className="text-2xl font-bold text-navy">Kasir Siluman</h1>
+          <p className="text-sm text-[#6B6458]">
+            {merchantName ? `Lapak: ${merchantName}` : "Tampilan penjual"}
+          </p>
+        </div>
+        <button
+          onClick={handleLogout}
+          className="rounded-lg border border-black/10 bg-white px-3 py-1.5 text-xs font-medium text-[#6B6458] shadow-sm transition hover:bg-black/5"
+        >
+          Keluar
+        </button>
+      </div>
 
       {!session && (
         <button
           onClick={bukaLapak}
-          disabled={loading}
+          disabled={loading || !merchantId}
           className="w-full rounded-xl bg-navy px-5 py-4 font-semibold text-white shadow-sm disabled:opacity-50"
         >
           1. Buka Lapak

@@ -40,8 +40,8 @@ async function main() {
   // ── Merchant 1: Bakso Pak Budi ─────────────────────────────────────────────
   const merchant1 = await db.merchant.upsert({
     where: { id: "demo-merchant" },
-    update: {},
-    create: { id: "demo-merchant", name: "Bakso Pak Budi", cartType: "gerobak" },
+    update: { pin: "1234" },
+    create: { id: "demo-merchant", name: "Bakso Pak Budi", cartType: "gerobak", pin: "1234" },
   });
 
   // ── Merchant 2: Es Teh Bu Sari (second merchant for Radar Tetangga) ────────
@@ -50,8 +50,8 @@ async function main() {
   // return a real averagePrice during the demo, not the "data kurang" 204.
   const merchant2 = await db.merchant.upsert({
     where: { id: "demo-merchant-2" },
-    update: {},
-    create: { id: "demo-merchant-2", name: "Es Teh Bu Sari", cartType: "gerobak" },
+    update: { pin: "5678" },
+    create: { id: "demo-merchant-2", name: "Es Teh Bu Sari", cartType: "gerobak", pin: "5678" },
   });
 
   // ── Scenarios for Merchant 1 ───────────────────────────────────────────────

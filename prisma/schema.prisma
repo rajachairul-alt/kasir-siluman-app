@@ -17,6 +17,9 @@ model Merchant {
   id        String    @id @default(cuid())
   name      String
   cartType  String    @default("gerobak") // "gerobak" | "stand"
+  /// PIN 4-6 digit untuk login pedagang di /login. Bukan untuk data sensitif —
+  /// cukup untuk memisahkan sesi antar pedagang di demo/UMKM kecil.
+  pin       String    @default("0000")
   createdAt DateTime  @default(now())
   sessions  Session[]
 }
