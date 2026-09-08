@@ -1,5 +1,5 @@
 import { PrismaClient } from "@prisma/client";
-import { PrismaLibSql } from "@prisma/adapter-libsql";
+import { PrismaLibSQL } from "@prisma/adapter-libsql";
 import { createClient } from "@libsql/client";
 
 const libsql = createClient({
@@ -7,7 +7,7 @@ const libsql = createClient({
   authToken: process.env.TURSO_AUTH_TOKEN,
 });
 
-const adapter = new PrismaLibSql(libsql);
+const adapter = new PrismaLibSQL(libsql);
 
 // Standard Next.js dev-mode singleton so hot-reload doesn't open a new
 // SQLite connection on every request.
