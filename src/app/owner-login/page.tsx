@@ -1,9 +1,17 @@
 "use client";
 
-import { useState } from "react";
+import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
 export default function OwnerLoginPage() {
+  return (
+    <Suspense fallback={null}>
+      <OwnerLoginForm />
+    </Suspense>
+  );
+}
+
+function OwnerLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const next = searchParams.get("next") || "/dashboard";
