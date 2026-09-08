@@ -5,6 +5,7 @@
   "description": "Kasir Siluman - copilot finansial otomatis untuk pedagang gerobak & UMKM mikro",
   "scripts": {
     "dev": "next dev",
+    "postinstall": "prisma generate",
     "build": "next build",
     "start": "next start",
     "lint": "next lint",
