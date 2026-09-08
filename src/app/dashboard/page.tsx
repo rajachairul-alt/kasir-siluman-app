@@ -9,6 +9,13 @@ import { useEffect, useState } from "react";
 // shown "apa adanya" to the owner — not buried, not smoothed over.
 // FLAGGED sessions therefore appear as a prominent alert above everything
 // else, not just as a coloured row inside a table.
+//
+// NOTE ON THIS FILE: only the visual layer (JSX markup / Tailwind classes)
+// was redesigned — this pass restyles the layout as a sidebar + topbar admin
+// dashboard (referencing the "BankDash" Figma admin-dashboard UI kit: white
+// card panels on a cool light-gray canvas, pastel icon-circle stat tiles,
+// quiet tables with pill status badges). All state, effects, handlers, and
+// business logic are unchanged from the original implementation.
 
 interface Merchant {
   id: string;
@@ -74,6 +81,100 @@ function formatMonth(ym: string): string {
   const date = new Date(Number(year), Number(month) - 1, 1);
   return date.toLocaleString("id-ID", { month: "long", year: "numeric" });
 }
+
+// ── Shared visual primitives ──────────────────────────────────────────────
+function Panel({ children, className = "" }: { children: React.ReactNode; className?: string }) {
+  return (
+    <div
+      className={`overflow-hidden rounded-2xl border border-slate-100 bg-white shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_-12px_rgba(15,23,42,0.08)] ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function SectionHeading({ icon, title, subtitle }: { icon: string; title: string; subtitle?: string }) {
+  return (
+    <div className="mb-3 flex items-start gap-2.5">
+      <IconCircle tone="navy">{icon}</IconCircle>
+      <div className="pt-0.5">
+        <h2 className="text-base font-bold text-navy">{title}</h2>
+        {subtitle && <p className="mt-0.5 text-xs text-slate-400">{subtitle}</p>}
+      </div>
+    </div>
+  );
+}
+
+function StatusPill({ status }: { status: string }) {
+  if (status === "RECONCILED") {
+    return (
+      <span className="inline-flex items-center gap-1 rounded-full bg-teal/10 px-2.5 py-1 text-xs font-semibold text-teal">
+        ✓ Cocok
+      </span>
+    );
+  }
+  return (
+    <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600">
+      ⚠ Selisih
+    </span>
+  );
+}
+
+type Tone = "navy" | "teal" | "orange" | "red" | "slate";
+
+const toneClasses: Record<Tone, string> = {
+  navy: "bg-navy/10 text-navy",
+  teal: "bg-teal/10 text-teal",
+  orange: "bg-orange/10 text-orange",
+  red: "bg-red-50 text-red-500",
+  slate: "bg-slate-100 text-slate-500",
+};
+
+function IconCircle({ children, tone = "navy" }: { children: React.ReactNode; tone?: Tone }) {
+  return (
+    <span
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base ${toneClasses[tone]}`}
+    >
+      {children}
+    </span>
+  );
+}
+
+function StatCard({
+  icon,
+  tone,
+  label,
+  value,
+  sub,
+  highlight = false,
+}: {
+  icon: string;
+  tone: Tone;
+  label: string;
+  value: string;
+  sub?: string;
+  highlight?: boolean;
+}) {
+  return (
+    <Panel className={`p-4 ${highlight ? "border-red-200" : ""}`}>
+      <div className="flex items-center gap-3">
+        <IconCircle tone={tone}>{icon}</IconCircle>
+        <div className="min-w-0">
+          <p className="truncate text-xs font-medium text-slate-400">{label}</p>
+          <p className={`text-lg font-bold ${highlight ? "text-red-600" : "text-navy"}`}>{value}</p>
+        </div>
+      </div>
+      {sub && <p className="mt-2 text-[11px] text-slate-400">{sub}</p>}
+    </Panel>
+  );
+}
+
+const NAV_ITEMS = [
+  { href: "#ringkasan", icon: "🏠", label: "Ringkasan" },
+  { href: "#sesi", icon: "🧾", label: "Sesi Pedagang" },
+  { href: "#log-agent", icon: "🛡️", label: "Log Keputusan Agent" },
+  { href: "#tabungan", icon: "💰", label: "Tabungan Bulanan" },
+];
 
 export default function DashboardPage() {
   const [rows, setRows] = useState<LedgerRow[]>([]);
@@ -182,335 +283,356 @@ export default function DashboardPage() {
   }
 
   return (
-    <main className="mx-auto min-h-screen max-w-3xl px-5 py-8">
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-navy">Kasir Siluman</h1>
-          <p className="text-sm text-[#6B6458]">Tampilan pemilik — pantauan jarak jauh</p>
-        </div>
-        <button
-          onClick={handleLogout}
-          className="rounded-lg border border-black/10 bg-white px-3 py-1.5 text-xs font-medium text-[#6B6458] shadow-sm transition hover:bg-black/5"
-        >
-          Keluar
-        </button>
-      </div>
+    <div className="min-h-screen bg-[#F3F5FB]">
+      <div className="mx-auto flex min-h-screen max-w-[1400px]">
+        {/* ── Sidebar (BankDash-style: logo, nav list with icon + label) ── */}
+        <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-slate-100 bg-white px-5 py-6 lg:flex">
+          <div className="mb-8 flex items-center gap-2.5 px-1">
+            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-navy text-lg text-white shadow-sm shadow-navy/20">
+              👑
+            </span>
+            <span className="text-lg font-extrabold tracking-tight text-navy">Kasir Siluman.</span>
+          </div>
 
-      {/* ── FLAGGED alert banner ─────────────────────────────────────────────
-          PRD section 4: gaps must be visible to the owner "as-is", not hidden
-          in secondary table columns. Only rendered when there is at least one
-          FLAGGED session in the current view. */}
-      {!loading && flaggedCount > 0 && (
-        <div className="mb-6 rounded-xl border-2 border-red-400 bg-red-50 p-4">
-          <div className="flex items-start gap-3">
-            <span className="mt-0.5 text-xl leading-none" aria-hidden>⚠️</span>
-            <div className="flex-1">
-              <p className="font-bold text-red-700">
-                {flaggedCount} sesi perlu ditinjau
-              </p>
-              <p className="mt-0.5 text-xs text-red-600">
-                Selisih antara estimasi tangkapan suara dan laporan tutup buku
-                melebihi toleransi. Tinjau bersama pedagang.
-              </p>
+          <nav className="flex flex-1 flex-col gap-1">
+            {NAV_ITEMS.map((item, i) => (
+              <a
+                key={item.href}
+                href={item.href}
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                  i === 0
+                    ? "border-l-[3px] border-navy bg-navy/[0.06] text-navy"
+                    : "border-l-[3px] border-transparent text-slate-500 hover:bg-slate-50 hover:text-navy"
+                }`}
+              >
+                <span className="text-base">{item.icon}</span>
+                {item.label}
+              </a>
+            ))}
+          </nav>
 
-              {/* Per-session variance list — owner sees the amount without
-                  having to scroll down or open any detail. */}
-              <ul className="mt-3 flex flex-col gap-2">
-                {flaggedRows.map((r) => (
-                  <li
-                    key={r.id}
-                    className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 rounded-lg bg-red-100 px-3 py-2 text-sm"
-                  >
-                    <span className="font-medium text-red-800">
-                      {r.merchant.name}
-                    </span>
-                    <span className="text-xs text-red-600">
-                      {shortDate(r.closedAt)}
-                    </span>
-                    <span className="ml-auto font-bold text-red-700">
-                      Selisih {rupiah(r.varianceAmount ?? 0)}
-                    </span>
-                  </li>
-                ))}
-              </ul>
+          <button
+            onClick={handleLogout}
+            className="mt-4 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-slate-50 hover:text-red-500"
+          >
+            <span className="text-base">🚪</span>
+            Keluar
+          </button>
+        </aside>
+
+        {/* ── Main column ── */}
+        <main className="min-h-screen flex-1 px-4 pb-16 pt-6 sm:px-6 lg:px-8">
+          {/* ── Topbar ── */}
+          <div className="mb-6 flex items-center justify-between gap-3">
+            <div>
+              <h1 id="ringkasan" className="scroll-mt-6 text-2xl font-extrabold text-navy">
+                Ringkasan
+              </h1>
+              <p className="mt-0.5 text-xs text-slate-400">Tampilan pemilik — pantauan jarak jauh</p>
+            </div>
+            <div className="flex items-center gap-2.5">
+              {flaggedCount > 0 && (
+                <span className="hidden items-center gap-1.5 rounded-full bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 sm:flex">
+                  🔔 {flaggedCount} perlu ditinjau
+                </span>
+              )}
+              <button
+                onClick={handleLogout}
+                className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-sm text-slate-500 shadow-sm transition hover:bg-slate-50 lg:hidden"
+                title="Keluar"
+              >
+                🚪
+              </button>
+              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-navy text-sm text-white shadow-sm">
+                👑
+              </span>
             </div>
           </div>
-        </div>
-      )}
 
-      {/* ── Summary cards ───────────────────────────────────────────────────── */}
-      <div className="mb-6 grid grid-cols-2 gap-4 sm:grid-cols-3">
-        <div className="rounded-xl border border-navy/15 bg-white p-4">
-          <p className="text-xs uppercase tracking-wide text-[#6B6458]">Total omzet tercatat</p>
-          <p className="mt-1 text-xl font-bold text-navy">{rupiah(totalOmzet)}</p>
-        </div>
+          {/* ── FLAGGED alert banner ─────────────────────────────────────────────
+              PRD section 4: gaps must be visible to the owner "as-is", not hidden
+              in secondary table columns. Only rendered when there is at least one
+              FLAGGED session in the current view. */}
+          {!loading && flaggedCount > 0 && (
+            <div className="mb-6 rounded-2xl border-2 border-red-200 bg-red-50/70 p-4 shadow-sm">
+              <div className="flex items-start gap-3">
+                <IconCircle tone="red">⚠️</IconCircle>
+                <div className="flex-1">
+                  <p className="font-bold text-red-700">{flaggedCount} sesi perlu ditinjau</p>
+                  <p className="mt-0.5 text-xs text-red-500">
+                    Selisih antara estimasi tangkapan suara dan laporan tutup buku melebihi
+                    toleransi. Tinjau bersama pedagang.
+                  </p>
 
-        {/* This card intentionally mirrors the alert banner: red when there
-            are flagged sessions, neutral when all is clean. */}
-        <div
-          className={`rounded-xl border p-4 ${
-            flaggedCount > 0
-              ? "border-red-400/60 bg-red-50"
-              : "border-navy/15 bg-white"
-          }`}
-        >
-          <p
-            className={`text-xs uppercase tracking-wide ${
-              flaggedCount > 0 ? "text-red-600" : "text-[#6B6458]"
-            }`}
-          >
-            Sesi perlu ditinjau
-          </p>
-          <p
-            className={`mt-1 text-xl font-bold ${
-              flaggedCount > 0 ? "text-red-700" : "text-[#6B6458]"
-            }`}
-          >
-            {flaggedCount}
-          </p>
-        </div>
+                  {/* Per-session variance list — owner sees the amount without
+                      having to scroll down or open any detail. */}
+                  <ul className="mt-3 flex flex-col gap-2">
+                    {flaggedRows.map((r) => (
+                      <li
+                        key={r.id}
+                        className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-0.5 rounded-xl bg-white px-3.5 py-2.5 text-sm shadow-sm"
+                      >
+                        <span className="font-semibold text-red-700">{r.merchant.name}</span>
+                        <span className="text-xs text-red-400">{shortDate(r.closedAt)}</span>
+                        <span className="ml-auto font-bold text-red-600">
+                          Selisih {rupiah(r.varianceAmount ?? 0)}
+                        </span>
+                      </li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
+          )}
 
-        {/* Third card: confirmed savings this month */}
-        <div className="col-span-2 rounded-xl border border-teal/30 bg-teal/5 p-4 sm:col-span-1">
-          <p className="text-xs uppercase tracking-wide text-teal">
-            Tabungan dikonfirmasi
-          </p>
-          <p className="mt-0.5 text-xs text-[#6B6458]">{formatMonth(thisMonth)}</p>
-          <p className="mt-1 text-xl font-bold text-teal">
-            {savingsLoading ? "…" : rupiah(confirmedSavingsThisMonth)}
-          </p>
-          {/* Generate button — idempotent, safe to press multiple times */}
-          <button
-            onClick={generateProposals}
-            disabled={generateLoading || merchants.length === 0}
-            className="mt-3 w-full rounded-lg bg-teal px-3 py-2 text-xs font-semibold text-white disabled:opacity-50"
-          >
-            {generateLoading ? "Membuat…" : "Generate proposal bulan ini"}
-          </button>
-        </div>
-      </div>
-
-      {/* ── Merchant filter ──────────────────────────────────────────────────
-          Prepared now; works even with a single merchant in the demo.
-          The dropdown is only shown once the merchant list has loaded. */}
-      {merchants.length > 1 && (
-        <div className="mb-4 flex items-center gap-3">
-          <label htmlFor="merchant-filter" className="text-sm text-[#6B6458] whitespace-nowrap">
-            Filter pedagang:
-          </label>
-          <select
-            id="merchant-filter"
-            value={merchantFilter}
-            onChange={(e) => setMerchantFilter(e.target.value)}
-            className="rounded-lg border border-navy/20 px-3 py-1.5 text-sm"
-          >
-            <option value="">Semua pedagang</option>
-            {merchants.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
-        </div>
-      )}
-
-      {/* ── Session table ────────────────────────────────────────────────────── */}
-      <div className="overflow-x-auto rounded-xl border border-navy/15 bg-white">
-        <table className="w-full text-sm">
-          <thead className="bg-navy text-left text-white">
-            <tr>
-              <th className="px-3 py-2">Pedagang</th>
-              <th className="px-3 py-2">Ditutup</th>
-              <th className="px-3 py-2">QRIS</th>
-              <th className="px-3 py-2">Suara</th>
-              <th className="px-3 py-2">Tutup Buku</th>
-              <th className="px-3 py-2">Selisih</th>
-              <th className="px-3 py-2">Status</th>
-            </tr>
-          </thead>
-          <tbody>
-            {rows.map((r, i) => (
-              <tr
-                key={r.id}
-                className={
-                  r.status === "FLAGGED"
-                    ? "bg-red-50"
-                    : i % 2 === 1
-                    ? "bg-light"
-                    : ""
-                }
+          {/* ── Summary stat cards ──────────────────────────────────────────────── */}
+          <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
+            <StatCard icon="💵" tone="navy" label="Total omzet tercatat" value={rupiah(totalOmzet)} />
+            <StatCard icon="🧾" tone="slate" label="Total sesi tercatat" value={String(rows.length)} />
+            <StatCard
+              icon="⚠️"
+              tone={flaggedCount > 0 ? "red" : "slate"}
+              label="Sesi perlu ditinjau"
+              value={String(flaggedCount)}
+              highlight={flaggedCount > 0}
+            />
+            <Panel className="p-4">
+              <div className="flex items-center gap-3">
+                <IconCircle tone="teal">💰</IconCircle>
+                <div className="min-w-0">
+                  <p className="truncate text-xs font-medium text-slate-400">Tabungan dikonfirmasi</p>
+                  <p className="text-lg font-bold text-teal">
+                    {savingsLoading ? "…" : rupiah(confirmedSavingsThisMonth)}
+                  </p>
+                </div>
+              </div>
+              <p className="mt-1 text-[11px] text-slate-400">{formatMonth(thisMonth)}</p>
+              <button
+                onClick={generateProposals}
+                disabled={generateLoading || merchants.length === 0}
+                className="mt-3 w-full rounded-xl bg-teal px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-teal/30 transition hover:bg-teal/90 disabled:opacity-50"
               >
-                <td className="px-3 py-2">{r.merchant.name}</td>
-                <td className="px-3 py-2">{shortDate(r.closedAt)}</td>
-                <td className="px-3 py-2">{rupiah(r.qrisTotal)}</td>
-                <td className="px-3 py-2">{rupiah(r.voiceCashEstimate)}</td>
-                <td className="px-3 py-2">{rupiah(r.closingReportTotal ?? 0)}</td>
-                <td
-                  className={`px-3 py-2 font-medium ${
-                    r.status === "FLAGGED" ? "text-red-700" : ""
-                  }`}
-                >
-                  {rupiah(r.varianceAmount ?? 0)}
-                </td>
-                <td className="px-3 py-2">
-                  <span
-                    className={`rounded-full px-2 py-1 text-xs font-semibold ${
-                      r.status === "RECONCILED"
-                        ? "bg-teal/15 text-teal"
-                        : "bg-red-100 text-red-700"
-                    }`}
-                  >
-                    {r.status === "RECONCILED" ? "Cocok ✓" : "⚠ Selisih"}
-                  </span>
-                </td>
-              </tr>
-            ))}
-            {loading && (
-              <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-[#6B6458]">
-                  Memuat…
-                </td>
-              </tr>
-            )}
-            {!loading && rows.length === 0 && (
-              <tr>
-                <td colSpan={7} className="px-3 py-6 text-center text-[#6B6458]">
-                  Belum ada sesi yang ditutup
-                  {merchantFilter ? " untuk pedagang ini" : ""}. Buka /session untuk mulai demo.
-                </td>
-              </tr>
-            )}
-          </tbody>
-        </table>
-      </div>
+                {generateLoading ? "Membuat…" : "Generate proposal bulan ini"}
+              </button>
+            </Panel>
+          </div>
 
-      {/* ── Audit Log panel ─────────────────────────────────────────────────
-          Governance layer: every reconciliation decision and savings status
-          change appears here — proof that the watsonx Orchestrate layer is
-          recording decisions, not just routing them.
-          Data comes from GET /api/audit-log (public read-only proxy). */}
-      <div className="mt-8">
-        <h2 className="mb-3 text-base font-semibold text-navy">
-          Log Keputusan Agent
-        </h2>
-        <p className="mb-3 text-xs text-[#6B6458]">
-          Setiap rekonsiliasi sesi dan perubahan status tabungan dicatat di sini
-          secara otomatis — ini yang ditampilkan sebagai bukti "governance layer"
-          watsonx Orchestrate kepada juri.
-        </p>
-
-        <div className="overflow-x-auto rounded-xl border border-navy/15 bg-white">
-          <table className="w-full text-sm">
-            <thead className="bg-navy text-left text-white">
-              <tr>
-                <th className="px-3 py-2">Waktu</th>
-                <th className="px-3 py-2">Agent</th>
-                <th className="px-3 py-2">Action</th>
-                <th className="px-3 py-2">Ringkasan</th>
-              </tr>
-            </thead>
-            <tbody>
-              {auditLogs.map((log, i) => (
-                <tr
-                  key={log.id}
-                  className={i % 2 === 1 ? "bg-light" : ""}
-                >
-                  <td className="px-3 py-2 tabular-nums text-[#6B6458]">
-                    {shortDate(log.createdAt)}
-                  </td>
-                  <td className="px-3 py-2">
-                    <span className="rounded-full bg-navy/10 px-2 py-0.5 text-xs font-medium text-navy">
-                      {log.agentName}
-                    </span>
-                  </td>
-                  <td className="px-3 py-2 font-mono text-xs">{log.action}</td>
-                  <td className="px-3 py-2 text-[#6B6458]">{log.detail ?? "—"}</td>
-                </tr>
-              ))}
-              {auditLoading && (
-                <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-[#6B6458]">
-                    Memuat log…
-                  </td>
-                </tr>
-              )}
-              {!auditLoading && auditLogs.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-[#6B6458]">
-                    Belum ada entri log. Tutup satu sesi atau confirm/decline
-                    proposal tabungan untuk melihat log pertama.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* ── Riwayat Tabungan Bulanan ─────────────────────────────────────────
-          Data already in `savings` state (fetched from /api/savings, filtered
-          by merchantFilter). Sorted newest-first by parsing the "YYYY-MM"
-          month string — no extra fetch needed. */}
-      <div className="mt-8">
-        <h2 className="mb-3 text-base font-semibold text-navy">
-          Riwayat Tabungan Bulanan
-        </h2>
-
-        <div className="overflow-x-auto rounded-xl border border-navy/15 bg-white">
-          <table className="w-full text-sm">
-            <thead className="bg-navy text-left text-white">
-              <tr>
-                <th className="px-3 py-2">Bulan</th>
-                <th className="px-3 py-2">Omzet tercatat</th>
-                <th className="px-3 py-2">Saran tabungan</th>
-                <th className="px-3 py-2">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              {[...savings]
-                .sort((a, b) => b.month.localeCompare(a.month))
-                .map((p, i) => (
-                  <tr key={p.id} className={i % 2 === 1 ? "bg-light" : ""}>
-                    <td className="px-3 py-2 font-medium">{formatMonth(p.month)}</td>
-                    <td className="px-3 py-2">{rupiah(p.netProfit)}</td>
-                    <td className="px-3 py-2">{rupiah(p.suggestedAmount)}</td>
-                    <td className="px-3 py-2">
-                      {p.status === "CONFIRMED" && (
-                        <span className="rounded-full bg-teal/15 px-2 py-0.5 text-xs font-semibold text-teal">
-                          Dikonfirmasi ✓
-                        </span>
-                      )}
-                      {p.status === "DECLINED" && (
-                        <span className="rounded-full bg-[#6B6458]/15 px-2 py-0.5 text-xs font-semibold text-[#6B6458]">
-                          Ditolak
-                        </span>
-                      )}
-                      {p.status === "PENDING_SELLER_CONFIRMATION" && (
-                        <span className="rounded-full bg-orange/15 px-2 py-0.5 text-xs font-semibold text-orange">
-                          Menunggu konfirmasi
-                        </span>
-                      )}
-                    </td>
-                  </tr>
+          {/* ── Merchant filter ──────────────────────────────────────────────────
+              Prepared now; works even with a single merchant in the demo.
+              The dropdown is only shown once the merchant list has loaded. */}
+          {merchants.length > 1 && (
+            <div className="mb-4 flex items-center gap-3">
+              <label htmlFor="merchant-filter" className="whitespace-nowrap text-sm text-slate-500">
+                Filter pedagang:
+              </label>
+              <select
+                id="merchant-filter"
+                value={merchantFilter}
+                onChange={(e) => setMerchantFilter(e.target.value)}
+                className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm shadow-sm outline-none transition focus:border-navy/40 focus:ring-2 focus:ring-navy/10"
+              >
+                <option value="">Semua pedagang</option>
+                {merchants.map((m) => (
+                  <option key={m.id} value={m.id}>
+                    {m.name}
+                  </option>
                 ))}
-              {savingsLoading && (
-                <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-[#6B6458]">
-                    Memuat…
-                  </td>
-                </tr>
-              )}
-              {!savingsLoading && savings.length === 0 && (
-                <tr>
-                  <td colSpan={4} className="px-3 py-6 text-center text-[#6B6458]">
-                    Belum ada riwayat tabungan.
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+              </select>
+            </div>
+          )}
+
+          {/* ── Session table ────────────────────────────────────────────────────── */}
+          <h2 id="sesi" className="mb-3 scroll-mt-6 text-base font-bold text-navy">
+            Sesi Pedagang
+          </h2>
+          <Panel>
+            <div className="overflow-x-auto">
+              <table className="w-full text-sm">
+                <thead>
+                  <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                    <th className="px-4 py-3">Pedagang</th>
+                    <th className="px-4 py-3">Ditutup</th>
+                    <th className="px-4 py-3">QRIS</th>
+                    <th className="px-4 py-3">Suara</th>
+                    <th className="px-4 py-3">Tutup Buku</th>
+                    <th className="px-4 py-3">Selisih</th>
+                    <th className="px-4 py-3">Status</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {rows.map((r) => (
+                    <tr
+                      key={r.id}
+                      className={`transition hover:bg-slate-50 ${
+                        r.status === "FLAGGED" ? "bg-red-50/40" : ""
+                      }`}
+                    >
+                      <td className="px-4 py-2.5 font-medium text-navy">{r.merchant.name}</td>
+                      <td className="px-4 py-2.5 text-slate-500">{shortDate(r.closedAt)}</td>
+                      <td className="px-4 py-2.5 text-slate-500">{rupiah(r.qrisTotal)}</td>
+                      <td className="px-4 py-2.5 text-slate-500">{rupiah(r.voiceCashEstimate)}</td>
+                      <td className="px-4 py-2.5 text-slate-500">
+                        {rupiah(r.closingReportTotal ?? 0)}
+                      </td>
+                      <td
+                        className={`px-4 py-2.5 font-semibold ${
+                          r.status === "FLAGGED" ? "text-red-600" : "text-navy"
+                        }`}
+                      >
+                        {rupiah(r.varianceAmount ?? 0)}
+                      </td>
+                      <td className="px-4 py-2.5">
+                        <StatusPill status={r.status} />
+                      </td>
+                    </tr>
+                  ))}
+                  {loading && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                        Memuat…
+                      </td>
+                    </tr>
+                  )}
+                  {!loading && rows.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
+                        Belum ada sesi yang ditutup
+                        {merchantFilter ? " untuk pedagang ini" : ""}. Buka /session untuk mulai demo.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+          </Panel>
+
+          {/* ── Audit Log panel ─────────────────────────────────────────────────
+              Governance layer: every reconciliation decision and savings status
+              change appears here — proof that the watsonx Orchestrate layer is
+              recording decisions, not just routing them.
+              Data comes from GET /api/audit-log (public read-only proxy). */}
+          <div className="mt-8">
+            <SectionHeading
+              icon="🛡️"
+              title="Log Keputusan Agent"
+              subtitle={
+                'Setiap rekonsiliasi sesi dan perubahan status tabungan dicatat di sini secara otomatis — ini yang ditampilkan sebagai bukti "governance layer" watsonx Orchestrate kepada juri.'
+              }
+            />
+
+            <Panel>
+              <div className="overflow-x-auto">
+                <table id="log-agent" className="w-full scroll-mt-6 text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                      <th className="px-4 py-3">Waktu</th>
+                      <th className="px-4 py-3">Agent</th>
+                      <th className="px-4 py-3">Action</th>
+                      <th className="px-4 py-3">Ringkasan</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {auditLogs.map((log) => (
+                      <tr key={log.id} className="transition hover:bg-slate-50">
+                        <td className="px-4 py-2.5 tabular-nums text-slate-400">
+                          {shortDate(log.createdAt)}
+                        </td>
+                        <td className="px-4 py-2.5">
+                          <span className="rounded-full bg-navy/10 px-2.5 py-1 text-xs font-semibold text-navy">
+                            {log.agentName}
+                          </span>
+                        </td>
+                        <td className="px-4 py-2.5 font-mono text-xs text-slate-500">{log.action}</td>
+                        <td className="px-4 py-2.5 text-slate-500">{log.detail ?? "—"}</td>
+                      </tr>
+                    ))}
+                    {auditLoading && (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                          Memuat log…
+                        </td>
+                      </tr>
+                    )}
+                    {!auditLoading && auditLogs.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                          Belum ada entri log. Tutup satu sesi atau confirm/decline proposal
+                          tabungan untuk melihat log pertama.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Panel>
+          </div>
+
+          {/* ── Riwayat Tabungan Bulanan ─────────────────────────────────────────
+              Data already in `savings` state (fetched from /api/savings, filtered
+              by merchantFilter). Sorted newest-first by parsing the "YYYY-MM"
+              month string — no extra fetch needed. */}
+          <div className="mt-8">
+            <SectionHeading icon="💰" title="Riwayat Tabungan Bulanan" />
+
+            <Panel>
+              <div className="overflow-x-auto">
+                <table id="tabungan" className="w-full scroll-mt-6 text-sm">
+                  <thead>
+                    <tr className="border-b border-slate-100 bg-slate-50/70 text-left text-[11px] font-semibold uppercase tracking-wider text-slate-400">
+                      <th className="px-4 py-3">Bulan</th>
+                      <th className="px-4 py-3">Omzet tercatat</th>
+                      <th className="px-4 py-3">Saran tabungan</th>
+                      <th className="px-4 py-3">Status</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-slate-100">
+                    {[...savings]
+                      .sort((a, b) => b.month.localeCompare(a.month))
+                      .map((p) => (
+                        <tr key={p.id} className="transition hover:bg-slate-50">
+                          <td className="px-4 py-2.5 font-medium text-navy">{formatMonth(p.month)}</td>
+                          <td className="px-4 py-2.5 text-slate-500">{rupiah(p.netProfit)}</td>
+                          <td className="px-4 py-2.5 text-slate-500">{rupiah(p.suggestedAmount)}</td>
+                          <td className="px-4 py-2.5">
+                            {p.status === "CONFIRMED" && (
+                              <span className="rounded-full bg-teal/10 px-2.5 py-1 text-xs font-semibold text-teal">
+                                Dikonfirmasi ✓
+                              </span>
+                            )}
+                            {p.status === "DECLINED" && (
+                              <span className="rounded-full bg-slate-100 px-2.5 py-1 text-xs font-semibold text-slate-500">
+                                Ditolak
+                              </span>
+                            )}
+                            {p.status === "PENDING_SELLER_CONFIRMATION" && (
+                              <span className="rounded-full bg-orange/10 px-2.5 py-1 text-xs font-semibold text-orange">
+                                Menunggu konfirmasi
+                              </span>
+                            )}
+                          </td>
+                        </tr>
+                      ))}
+                    {savingsLoading && (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                          Memuat…
+                        </td>
+                      </tr>
+                    )}
+                    {!savingsLoading && savings.length === 0 && (
+                      <tr>
+                        <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
+                          Belum ada riwayat tabungan.
+                        </td>
+                      </tr>
+                    )}
+                  </tbody>
+                </table>
+              </div>
+            </Panel>
+          </div>
+        </main>
       </div>
-    </main>
+    </div>
   );
 }

@@ -23,6 +23,13 @@ import { generatePromo, type PromoResult } from "@/lib/generativePromo";
 //   1. The "Rekam" button is only rendered when isOpen === true.
 //   2. The useEffect that watches `isOpen` calls stopRecording() and
 //      releases the MediaStream the moment the session leaves OPEN status.
+//
+// NOTE ON THIS FILE: only the visual layer (JSX markup / Tailwind classes)
+// was redesigned — this pass adopts the same "BankDash" Figma admin-kit
+// visual language used on /dashboard (cool light-gray canvas, white rounded
+// cards, pastel icon-circle tiles, pill badges) in a compact topbar layout
+// suited to a phone screen at a food cart. All state, effects, handlers, and
+// business logic are unchanged from the original implementation.
 
 function readCookie(name: string): string | null {
   if (typeof document === "undefined") return null;
@@ -87,6 +94,57 @@ function rupiah(n: number) {
 function formatMonth(ym: string): string {
   const [year, month] = ym.split("-").map(Number);
   return new Date(year, month - 1, 1).toLocaleString("id-ID", { month: "long", year: "numeric" });
+}
+
+// ── Shared visual primitives ──────────────────────────────────────────────
+function SectionCard({
+  children,
+  className = "",
+}: {
+  children: React.ReactNode;
+  className?: string;
+}) {
+  return (
+    <div
+      className={`rounded-2xl border border-slate-100 bg-white p-4 shadow-[0_1px_2px_rgba(15,23,42,0.04),0_8px_20px_-12px_rgba(15,23,42,0.08)] ${className}`}
+    >
+      {children}
+    </div>
+  );
+}
+
+function EyebrowLabel({
+  children,
+  tone = "navy",
+}: {
+  children: React.ReactNode;
+  tone?: "navy" | "orange" | "teal";
+}) {
+  const toneClass =
+    tone === "orange" ? "text-orange" : tone === "teal" ? "text-teal" : "text-navy";
+  return (
+    <p className={`text-[11px] font-bold uppercase tracking-wider ${toneClass}`}>{children}</p>
+  );
+}
+
+type Tone = "navy" | "teal" | "orange" | "red" | "slate";
+
+const toneClasses: Record<Tone, string> = {
+  navy: "bg-navy/10 text-navy",
+  teal: "bg-teal/10 text-teal",
+  orange: "bg-orange/10 text-orange",
+  red: "bg-red-50 text-red-500",
+  slate: "bg-slate-100 text-slate-500",
+};
+
+function IconCircle({ children, tone = "navy" }: { children: React.ReactNode; tone?: Tone }) {
+  return (
+    <span
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base ${toneClasses[tone]}`}
+    >
+      {children}
+    </span>
+  );
 }
 
 export default function SessionPage() {
@@ -449,205 +507,261 @@ export default function SessionPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <main className="mx-auto min-h-screen max-w-md px-5 py-8">
-      <div className="mb-6 flex items-start justify-between">
-        <div>
-          <h1 className="text-2xl font-bold text-navy">Kasir Siluman</h1>
-          <p className="text-sm text-[#6B6458]">
-            {merchantName ? `Lapak: ${merchantName}` : "Tampilan penjual"}
-          </p>
+    <div className="min-h-screen bg-[#F3F5FB]">
+      <main className="mx-auto min-h-screen max-w-md px-4 pb-14 pt-5 sm:px-5">
+        {/* ── Topbar (BankDash-style: icon-circle brand mark, title, avatar) ── */}
+        <div className="mb-5 flex items-center justify-between rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
+          <div className="flex items-center gap-2.5">
+            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-navy text-lg text-white shadow-sm shadow-navy/20">
+              🛒
+            </span>
+            <div>
+              <h1 className="text-sm font-extrabold leading-tight text-navy">Kasir Siluman</h1>
+              <p className="text-xs text-slate-400">
+                {merchantName ? `Lapak: ${merchantName}` : "Tampilan penjual"}
+              </p>
+            </div>
+          </div>
+          <button
+            onClick={handleLogout}
+            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-sm text-slate-500 shadow-sm transition hover:bg-slate-50 hover:text-navy"
+            title="Keluar"
+          >
+            🚪
+          </button>
         </div>
-        <button
-          onClick={handleLogout}
-          className="rounded-lg border border-black/10 bg-white px-3 py-1.5 text-xs font-medium text-[#6B6458] shadow-sm transition hover:bg-black/5"
-        >
-          Keluar
-        </button>
-      </div>
 
-      {!session && (
-        <button
-          onClick={bukaLapak}
-          disabled={loading || !merchantId}
-          className="w-full rounded-xl bg-navy px-5 py-4 font-semibold text-white shadow-sm disabled:opacity-50"
-        >
-          1. Buka Lapak
-        </button>
-      )}
-
-      {session && isOpen && (
-        <div className="flex flex-col gap-5">
-          {/* ── Sesi aktif summary ── */}
-          <div className="rounded-xl border border-navy/15 bg-white p-4">
-            <p className="text-xs uppercase tracking-wide text-[#6B6458]">Sesi aktif</p>
-            <p className="mt-1 text-sm">
-              QRIS: <span className="font-semibold">{rupiah(session.qrisTotal)}</span> ·
-              Suara: <span className="font-semibold">{rupiah(session.voiceCashEstimate)}</span>
-            </p>
-          </div>
-
-          {/* ── Simulasi QRIS ── */}
-          <div className="rounded-xl border border-orange/30 bg-light p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-orange">
-              Simulasi — bukan koneksi QRIS asli
-            </p>
-            <p className="mt-1 text-xs text-[#6B6458]">
-              Tombol ini berdiri di tempat webhook QRIS asli. Lihat BOB_BRIEF.md.
-            </p>
-            <div className="mt-3 flex gap-2">
-              <input
-                type="number"
-                value={qrisAmount}
-                onChange={(e) => setQrisAmount(e.target.value)}
-                className="w-28 rounded-lg border border-navy/20 px-3 py-2 text-sm"
-              />
-              <button
-                onClick={simulateQris}
-                className="flex-1 rounded-lg bg-teal px-3 py-2 text-sm font-semibold text-white"
-              >
-                Simulasikan Pembayaran QRIS
-              </button>
-            </div>
-          </div>
-
-          {/* ── Voice capture panel ── */}
-          <VoicePanel
-            recordingStatus={recordingStatus}
-            voiceError={voiceError}
-            lastVoiceResult={lastVoiceResult}
-            onStart={startRecording}
-            onStop={stopRecordingManually}
-          />
-
-          {/* ── Radar Tetangga insight card ── */}
-          <RadarTetanggaPanel
-            status={radarStatus}
-            result={radarResult}
-            query={radarQuery}
-            onQueryChange={setRadarQuery}
-            onQuery={queryRadar}
-          />
-
-          {/* ── Generative Promo ── */}
-          <PromoPanel
-            status={promoStatus}
-            result={promoResult}
-            onGenerate={buatPromo}
-          />
-
-          {/* ── Tabungan Bulanan ── only shown when there is a pending proposal */}
-          {pendingSavings && (
-            <SavingsPanel
-              proposal={pendingSavings}
-              loading={savingsActionLoading}
-              onConfirm={confirmSavings}
-              onDecline={declineSavings}
-            />
-          )}
-
-          {/* ── Daftar transaksi ── */}
-          <div className="rounded-xl border border-navy/15 bg-white p-4">
-            <p className="mb-2 text-xs uppercase tracking-wide text-[#6B6458]">
-              Transaksi hari ini ({session.transactions.length})
-            </p>
-            <ul className="flex flex-col gap-1 text-sm">
-              {session.transactions.map((t) => (
-                <li key={t.id} className="flex justify-between">
-                  <span className="text-[#6B6458]">{t.source === "qris" ? "QRIS" : "Suara"}</span>
-                  <span className="font-medium">{rupiah(t.amount)}</span>
-                </li>
-              ))}
-              {session.transactions.length === 0 && (
-                <li className="text-[#6B6458]">Belum ada transaksi.</li>
-              )}
-            </ul>
-          </div>
-
-          {/* ── Tutup Buku manual ── */}
-          <div className="rounded-xl bg-navy p-4">
-            <p className="text-xs font-semibold uppercase tracking-wide text-white/70">
-              3. Tutup Buku (manual)
-            </p>
-            <p className="mt-1 text-xs text-white/50">
-              Atau ucapkan frasa &quot;tutup buku&quot; saat merekam — sistem akan menutup sesi
-              otomatis.
-            </p>
-            <div className="mt-3 flex gap-2">
-              <input
-                type="number"
-                placeholder="Total tunai yang dihitung"
-                value={closingTotal}
-                onChange={(e) => setClosingTotal(e.target.value)}
-                className="w-full rounded-lg border-0 px-3 py-2 text-sm"
-              />
-              <button
-                onClick={tutupBukuManual}
-                disabled={loading || !closingTotal}
-                className="rounded-lg bg-orange px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
-              >
-                Tutup
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
-
-      {/* ── Rekonsiliasi result ── */}
-      {result && result.status !== "OPEN" && (
-        <div
-          className={`mt-5 rounded-xl border p-4 ${
-            result.status === "RECONCILED"
-              ? "border-teal/40 bg-teal/10"
-              : "border-red-400/40 bg-red-50"
-          }`}
-        >
-          {/* Status title */}
-          <p className={`font-semibold ${result.status === "RECONCILED" ? "text-teal" : "text-red-700"}`}>
-            {result.status === "RECONCILED" ? "Rekonsiliasi cocok ✓" : "Ada selisih — FLAGGED"}
-          </p>
-
-          {/* Category breakdown */}
-          <div className="mt-3 flex flex-col gap-1.5 text-sm">
-            <div className="flex items-baseline justify-between">
-              <span className="text-[#6B6458]">Tutup buku (pedagang)</span>
-              <span className="font-medium">{rupiah(result.closingReportTotal ?? 0)}</span>
-            </div>
-            <div className="flex items-baseline justify-between">
-              <span className="text-[#6B6458]">Estimasi kas dari suara</span>
-              <span className="font-medium">{rupiah(result.voiceCashEstimate)}</span>
-            </div>
-            <div className="flex items-baseline justify-between gap-3">
-              <span className="text-[#6B6458]">
-                QRIS{" "}
-                <span className="text-xs opacity-70">— tidak dihitung dalam selisih, sudah terverifikasi otomatis</span>
+        {!session && (
+          <button
+            onClick={bukaLapak}
+            disabled={loading || !merchantId}
+            className="group flex w-full items-center gap-4 rounded-2xl bg-gradient-to-br from-navy to-[#152A40] px-5 py-5 text-left shadow-lg shadow-navy/25 transition active:scale-[0.99] disabled:opacity-50"
+          >
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-2xl">
+              🏪
+            </span>
+            <span className="flex-1">
+              <span className="block text-sm font-medium text-white/70">Langkah 1</span>
+              <span className="block text-lg font-bold text-white">
+                {loading ? "Membuka lapak…" : "Buka Lapak"}
               </span>
-              <span className="shrink-0 font-medium">{rupiah(result.qrisTotal)}</span>
+            </span>
+            <span className="text-xl text-white/50 transition group-hover:translate-x-0.5">›</span>
+          </button>
+        )}
+
+        {session && isOpen && (
+          <div className="flex flex-col gap-4">
+            {/* ── Sesi aktif summary — BankDash-style pastel icon-circle stat tiles ── */}
+            <SectionCard>
+              <div className="flex items-center justify-between">
+                <EyebrowLabel>Sesi aktif</EyebrowLabel>
+                <span className="flex items-center gap-1.5 rounded-full bg-teal/10 px-2.5 py-1 text-[11px] font-semibold text-teal">
+                  <span className="h-1.5 w-1.5 rounded-full bg-teal" />
+                  Berjualan
+                </span>
+              </div>
+              <div className="mt-3 grid grid-cols-2 gap-3">
+                <div className="flex items-center gap-2.5 rounded-xl bg-slate-50 p-3">
+                  <IconCircle tone="teal">💳</IconCircle>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium text-slate-400">QRIS</p>
+                    <p className="truncate text-base font-bold text-navy">{rupiah(session.qrisTotal)}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2.5 rounded-xl bg-slate-50 p-3">
+                  <IconCircle tone="navy">🎙</IconCircle>
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-medium text-slate-400">Suara</p>
+                    <p className="truncate text-base font-bold text-navy">
+                      {rupiah(session.voiceCashEstimate)}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            </SectionCard>
+
+            {/* ── Simulasi QRIS ── */}
+            <SectionCard className="border-orange/20">
+              <div className="flex items-start gap-2.5">
+                <IconCircle tone="orange">⚠️</IconCircle>
+                <div className="pt-0.5">
+                  <EyebrowLabel tone="orange">Simulasi — bukan koneksi QRIS asli</EyebrowLabel>
+                  <p className="mt-1 text-xs text-slate-400">
+                    Tombol ini berdiri di tempat webhook QRIS asli. Lihat BOB_BRIEF.md.
+                  </p>
+                </div>
+              </div>
+              <div className="mt-3 flex gap-2">
+                <input
+                  type="number"
+                  value={qrisAmount}
+                  onChange={(e) => setQrisAmount(e.target.value)}
+                  className="w-28 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium outline-none transition focus:border-navy/40 focus:ring-2 focus:ring-navy/10"
+                />
+                <button
+                  onClick={simulateQris}
+                  className="flex-1 rounded-xl bg-teal px-3 py-2.5 text-sm font-semibold text-white shadow-sm shadow-teal/30 transition hover:bg-teal/90 active:scale-[0.99]"
+                >
+                  Simulasikan Pembayaran QRIS
+                </button>
+              </div>
+            </SectionCard>
+
+            {/* ── Voice capture panel ── */}
+            <VoicePanel
+              recordingStatus={recordingStatus}
+              voiceError={voiceError}
+              lastVoiceResult={lastVoiceResult}
+              onStart={startRecording}
+              onStop={stopRecordingManually}
+            />
+
+            {/* ── Radar Tetangga insight card ── */}
+            <RadarTetanggaPanel
+              status={radarStatus}
+              result={radarResult}
+              query={radarQuery}
+              onQueryChange={setRadarQuery}
+              onQuery={queryRadar}
+            />
+
+            {/* ── Generative Promo ── */}
+            <PromoPanel status={promoStatus} result={promoResult} onGenerate={buatPromo} />
+
+            {/* ── Tabungan Bulanan ── only shown when there is a pending proposal */}
+            {pendingSavings && (
+              <SavingsPanel
+                proposal={pendingSavings}
+                loading={savingsActionLoading}
+                onConfirm={confirmSavings}
+                onDecline={declineSavings}
+              />
+            )}
+
+            {/* ── Daftar transaksi ── */}
+            <SectionCard>
+              <EyebrowLabel>Transaksi hari ini ({session.transactions.length})</EyebrowLabel>
+              <ul className="mt-2 flex flex-col divide-y divide-slate-100">
+                {session.transactions.map((t) => (
+                  <li key={t.id} className="flex items-center justify-between py-2.5 text-sm">
+                    <span className="flex items-center gap-2.5 text-slate-500">
+                      <IconCircle tone={t.source === "qris" ? "teal" : "navy"}>
+                        <span className="text-[11px] font-bold">{t.source === "qris" ? "Q" : "S"}</span>
+                      </IconCircle>
+                      <span>
+                        {t.source === "qris" ? "QRIS" : "Suara"}
+                        {t.itemLabel && <span className="text-xs text-slate-300"> · {t.itemLabel}</span>}
+                      </span>
+                    </span>
+                    <span className="font-semibold text-navy">{rupiah(t.amount)}</span>
+                  </li>
+                ))}
+                {session.transactions.length === 0 && (
+                  <li className="py-3 text-center text-sm text-slate-300">Belum ada transaksi.</li>
+                )}
+              </ul>
+            </SectionCard>
+
+            {/* ── Tutup Buku manual ── */}
+            <div className="rounded-2xl bg-gradient-to-br from-navy to-[#16283D] p-4 shadow-lg shadow-navy/20">
+              <p className="text-[11px] font-bold uppercase tracking-wider text-white/70">
+                Langkah 3 · Tutup Buku (manual)
+              </p>
+              <p className="mt-1 text-xs text-white/45">
+                Atau ucapkan frasa &quot;tutup buku&quot; saat merekam — sistem akan menutup sesi
+                otomatis.
+              </p>
+              <div className="mt-3 flex gap-2">
+                <input
+                  type="number"
+                  placeholder="Total tunai yang dihitung"
+                  value={closingTotal}
+                  onChange={(e) => setClosingTotal(e.target.value)}
+                  className="w-full rounded-xl border-0 bg-white/95 px-3 py-2.5 text-sm outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-white/40"
+                />
+                <button
+                  onClick={tutupBukuManual}
+                  disabled={loading || !closingTotal}
+                  className="shrink-0 rounded-xl bg-orange px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-orange/90 active:scale-[0.99] disabled:opacity-50"
+                >
+                  Tutup
+                </button>
+              </div>
             </div>
           </div>
+        )}
 
-          {/* Variance row — more prominent */}
+        {/* ── Rekonsiliasi result ── */}
+        {result && result.status !== "OPEN" && (
           <div
-            className={`mt-3 border-t pt-3 ${
-              result.status === "RECONCILED" ? "border-teal/30" : "border-red-300/50"
+            className={`mt-5 rounded-2xl border p-4 shadow-sm ${
+              result.status === "RECONCILED"
+                ? "border-teal/25 bg-teal/[0.05]"
+                : "border-red-200 bg-red-50/60"
             }`}
           >
-            <div className="flex items-baseline justify-between">
-              <div>
-                <span className="font-semibold">Selisih</span>
-                <p className="text-xs text-[#6B6458]">dihitung dari tutup buku vs. estimasi suara</p>
-              </div>
-              <span
-                className={`text-lg font-bold ${
-                  result.status === "RECONCILED" ? "text-teal" : "text-red-700"
+            {/* Status title */}
+            <div className="flex items-center gap-2.5">
+              <IconCircle tone={result.status === "RECONCILED" ? "teal" : "red"}>
+                {result.status === "RECONCILED" ? "✅" : "⚠️"}
+              </IconCircle>
+              <p
+                className={`font-bold ${
+                  result.status === "RECONCILED" ? "text-teal" : "text-red-600"
                 }`}
               >
-                {rupiah(result.varianceAmount ?? 0)}
-              </span>
+                {result.status === "RECONCILED" ? "Rekonsiliasi cocok" : "Ada selisih — FLAGGED"}
+              </p>
+            </div>
+
+            {/* Category breakdown */}
+            <div className="mt-3 flex flex-col gap-2 text-sm">
+              <div className="flex items-baseline justify-between">
+                <span className="text-slate-400">Tutup buku (pedagang)</span>
+                <span className="font-semibold text-navy">
+                  {rupiah(result.closingReportTotal ?? 0)}
+                </span>
+              </div>
+              <div className="flex items-baseline justify-between">
+                <span className="text-slate-400">Estimasi kas dari suara</span>
+                <span className="font-semibold text-navy">{rupiah(result.voiceCashEstimate)}</span>
+              </div>
+              <div className="flex items-baseline justify-between gap-3">
+                <span className="text-slate-400">
+                  QRIS{" "}
+                  <span className="text-xs opacity-70">
+                    — tidak dihitung dalam selisih, sudah terverifikasi otomatis
+                  </span>
+                </span>
+                <span className="shrink-0 font-semibold text-navy">{rupiah(result.qrisTotal)}</span>
+              </div>
+            </div>
+
+            {/* Variance row — more prominent */}
+            <div
+              className={`mt-3 border-t pt-3 ${
+                result.status === "RECONCILED" ? "border-teal/15" : "border-red-200"
+              }`}
+            >
+              <div className="flex items-baseline justify-between">
+                <div>
+                  <span className="font-semibold text-navy">Selisih</span>
+                  <p className="text-xs text-slate-400">dihitung dari tutup buku vs. estimasi suara</p>
+                </div>
+                <span
+                  className={`text-xl font-bold ${
+                    result.status === "RECONCILED" ? "text-teal" : "text-red-600"
+                  }`}
+                >
+                  {rupiah(result.varianceAmount ?? 0)}
+                </span>
+              </div>
             </div>
           </div>
-        </div>
-      )}
-    </main>
+        )}
+      </main>
+    </div>
   );
 }
 
@@ -675,47 +789,57 @@ function VoicePanel({
   const busy = isRecording || isProcessing || isRequesting;
 
   return (
-    <div className="rounded-xl border border-navy/15 bg-white p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-navy">
-        2. Rekam Harga / Tutup Buku
-      </p>
-      <p className="mt-1 text-xs text-[#6B6458]">
-        Tekan Rekam, sebutkan harga atau ucapkan &quot;tutup buku&quot;, lalu tekan Berhenti.
-        {/* TODO: remove this notice once Langflow is wired in */}{" "}
-        <span className="text-orange font-medium">
-          (Pipeline suara belum tersambung — lihat src/lib/voiceToTransaction.ts)
-        </span>
-      </p>
+    <SectionCard>
+      <div className="flex items-start gap-2.5">
+        <IconCircle tone="navy">🎙</IconCircle>
+        <div className="pt-0.5">
+          <EyebrowLabel>Langkah 2 · Rekam Harga / Tutup Buku</EyebrowLabel>
+          <p className="mt-1 text-xs text-slate-400">
+            Tekan Rekam, sebutkan harga atau ucapkan &quot;tutup buku&quot;, lalu tekan Berhenti.
+            {/* TODO: remove this notice once Langflow is wired in */}{" "}
+            <span className="font-medium text-orange">
+              (Pipeline suara belum tersambung — lihat src/lib/voiceToTransaction.ts)
+            </span>
+          </p>
+        </div>
+      </div>
 
-      <div className="mt-3 flex gap-2">
+      <div className="mt-3 flex justify-center">
         {!isRecording ? (
           <button
             onClick={onStart}
             disabled={busy}
-            className="flex-1 rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-navy px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-navy/20 transition hover:bg-navy/90 active:scale-[0.99] disabled:opacity-50"
           >
-            {isRequesting ? "Meminta izin mikrofon…" : isProcessing ? "Memproses…" : "🎙 Rekam"}
+            <span className="text-base">🎙</span>
+            {isRequesting ? "Meminta izin mikrofon…" : isProcessing ? "Memproses…" : "Rekam"}
           </button>
         ) : (
           <button
             onClick={onStop}
-            className="flex-1 animate-pulse rounded-lg bg-red-500 px-4 py-2 text-sm font-semibold text-white"
+            className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-500 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-red-500/30 transition active:scale-[0.99]"
           >
-            ⏹ Berhenti (sedang merekam…)
+            <span className="relative flex h-2.5 w-2.5">
+              <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/70" />
+              <span className="relative inline-flex h-2.5 w-2.5 rounded-full bg-white" />
+            </span>
+            Berhenti (sedang merekam…)
           </button>
         )}
       </div>
 
       {lastVoiceResult && !voiceError && (
-        <p className="mt-2 text-xs text-teal">{lastVoiceResult}</p>
+        <p className="mt-2.5 rounded-lg bg-teal/[0.08] px-3 py-2 text-xs font-medium text-teal">
+          {lastVoiceResult}
+        </p>
       )}
 
       {voiceError && (
-        <p className="mt-2 text-xs text-red-600">
+        <p className="mt-2.5 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
           Gagal: {voiceError}
         </p>
       )}
-    </div>
+    </SectionCard>
   );
 }
 
@@ -742,13 +866,16 @@ function RadarTetanggaPanel({
   onQuery,
 }: RadarTetanggaPanelProps) {
   return (
-    <div className="rounded-xl border border-navy/15 bg-white p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-navy">
-        Radar Tetangga
-      </p>
-      <p className="mt-1 text-xs text-[#6B6458]">
-        Rata-rata harga barang serupa di sekitar lapak Anda, dari data agregat anonim.
-      </p>
+    <SectionCard>
+      <div className="flex items-start gap-2.5">
+        <IconCircle tone="teal">📡</IconCircle>
+        <div className="pt-0.5">
+          <EyebrowLabel>Radar Tetangga</EyebrowLabel>
+          <p className="mt-1 text-xs text-slate-400">
+            Rata-rata harga barang serupa di sekitar lapak Anda, dari data agregat anonim.
+          </p>
+        </div>
+      </div>
 
       <div className="mt-3 flex gap-2">
         <input
@@ -757,13 +884,13 @@ function RadarTetanggaPanel({
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && onQuery(query)}
-          className="flex-1 rounded-lg border border-navy/20 px-3 py-2 text-sm"
+          className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-navy/40 focus:ring-2 focus:ring-navy/10"
           disabled={status === "loading"}
         />
         <button
           onClick={() => onQuery(query)}
           disabled={!query.trim() || status === "loading"}
-          className="rounded-lg bg-navy px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          className="rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-navy/90 disabled:opacity-50"
         >
           {status === "loading" ? "…" : "Cek"}
         </button>
@@ -771,7 +898,7 @@ function RadarTetanggaPanel({
 
       {/* ── Result states ── */}
       {status === "inactive" && (
-        <p className="mt-3 text-xs text-[#6B6458]">
+        <p className="mt-3 text-xs text-slate-400">
           {/* Honest placeholder — no fake data. */}
           Radar Tetangga belum aktif — menunggu pipeline Langflow
           ({/* TODO: remove once wired in */}
@@ -780,18 +907,14 @@ function RadarTetanggaPanel({
       )}
 
       {status === "loading" && (
-        <p className="mt-3 text-xs text-[#6B6458]">Mencari data sekitar…</p>
+        <p className="mt-3 text-xs text-slate-400">Mencari data sekitar…</p>
       )}
 
       {status === "ready" && result && (
-        <div className="mt-3 rounded-lg bg-navy/5 px-3 py-2">
-          <p className="text-sm font-semibold text-navy">
-            {result.itemLabel}
-          </p>
-          <p className="text-lg font-bold text-navy">
-            {rupiah(result.averagePrice)}
-          </p>
-          <p className="text-xs text-[#6B6458]">
+        <div className="mt-3 rounded-xl bg-slate-50 px-3.5 py-3">
+          <p className="text-sm font-semibold text-navy">{result.itemLabel}</p>
+          <p className="mt-0.5 text-xl font-bold text-navy">{rupiah(result.averagePrice)}</p>
+          <p className="mt-0.5 text-xs text-slate-400">
             rata-rata dari {result.sampleSize} pedagang sekitar
             {result.radius ? ` (radius ${result.radius})` : ""}
           </p>
@@ -799,18 +922,18 @@ function RadarTetanggaPanel({
       )}
 
       {status === "insufficient-data" && (
-        <p className="mt-3 text-xs text-[#6B6458]">
+        <p className="mt-3 text-xs text-slate-400">
           Belum cukup data dari pedagang sekitar untuk barang ini (minimal 2
           pedagang lain). Coba lagi nanti setelah lebih banyak transaksi tercatat.
         </p>
       )}
 
       {status === "error" && (
-        <p className="mt-3 text-xs text-red-600">
+        <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
           Gagal mengambil data radar. Coba lagi.
         </p>
       )}
-    </div>
+    </SectionCard>
   );
 }
 
@@ -828,59 +951,63 @@ interface PromoPanelProps {
 
 function PromoPanel({ status, result, onGenerate }: PromoPanelProps) {
   return (
-    <div className="rounded-xl border border-navy/15 bg-white p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-navy">
-        Buat Promo
-      </p>
-      <p className="mt-1 text-xs text-[#6B6458]">
-        Buat teks poster dan prompt gambar dari data penjualan terbaru Anda.
-      </p>
+    <SectionCard>
+      <div className="flex items-start gap-2.5">
+        <IconCircle tone="orange">✨</IconCircle>
+        <div className="pt-0.5">
+          <EyebrowLabel>Buat Promo</EyebrowLabel>
+          <p className="mt-1 text-xs text-slate-400">
+            Buat teks poster dan prompt gambar dari data penjualan terbaru Anda.
+          </p>
+        </div>
+      </div>
 
       <button
         onClick={onGenerate}
         disabled={status === "loading"}
-        className="mt-3 w-full rounded-lg bg-navy px-4 py-2 text-sm font-semibold text-white disabled:opacity-50"
+        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-navy/90 active:scale-[0.99] disabled:opacity-50"
       >
-        {status === "loading" ? "Sedang membuat promo…" : "✨ Buat Promo"}
+        <span>✨</span>
+        {status === "loading" ? "Sedang membuat promo…" : "Buat Promo"}
       </button>
 
       {/* ── Result states ── */}
       {status === "inactive" && (
-        <p className="mt-3 text-xs text-[#6B6458]">
+        <p className="mt-3 text-xs text-slate-400">
           Tekan tombol di atas untuk membuat teks promo dari data penjualan terbaru.
         </p>
       )}
 
       {status === "loading" && (
-        <p className="mt-3 text-xs text-[#6B6458]">Mengambil konteks dan membuat promo…</p>
+        <p className="mt-3 text-xs text-slate-400">Mengambil konteks dan membuat promo…</p>
       )}
 
       {status === "ready" && result && (
         <div className="mt-3 flex flex-col gap-3">
           {/* Poster copy */}
-          <div className="rounded-lg bg-navy/5 px-3 py-2">
-            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#6B6458]">
+          <div className="rounded-xl bg-slate-50 px-3.5 py-3">
+            <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
               Teks Poster
             </p>
             <p className="whitespace-pre-wrap text-sm text-navy">{result.posterText}</p>
           </div>
 
           {/* Image prompt — displayed as read-only text to copy into an image tool */}
-          <div className="rounded-lg border border-dashed border-navy/20 px-3 py-2">
-            <p className="mb-1 text-xs font-semibold uppercase tracking-wide text-[#6B6458]">
+          <div className="rounded-xl border border-dashed border-navy/20 px-3.5 py-3">
+            <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
               Prompt Gambar
             </p>
-            <p className="text-xs italic text-[#6B6458]">{result.imagePrompt}</p>
+            <p className="text-xs italic text-slate-400">{result.imagePrompt}</p>
           </div>
         </div>
       )}
 
       {status === "error" && (
-        <p className="mt-3 text-xs text-red-600">
+        <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
           Gagal membuat promo. Coba lagi.
         </p>
       )}
-    </div>
+    </SectionCard>
   );
 }
 
@@ -901,28 +1028,31 @@ interface SavingsPanelProps {
 
 function SavingsPanel({ proposal, loading, onConfirm, onDecline }: SavingsPanelProps) {
   return (
-    <div className="rounded-xl border-2 border-teal/40 bg-teal/5 p-4">
-      <p className="text-xs font-semibold uppercase tracking-wide text-teal">
-        💰 Saran Tabungan Bulan Ini
-      </p>
-      <p className="mt-1 text-xs text-[#6B6458]">
-        Berdasarkan omzet tercatat bulan{" "}
-        <span className="font-medium">{formatMonth(proposal.month)}</span>
-      </p>
+    <SectionCard className="border-teal/25">
+      <div className="flex items-start gap-2.5">
+        <IconCircle tone="teal">💰</IconCircle>
+        <div className="pt-0.5">
+          <EyebrowLabel tone="teal">Saran Tabungan Bulan Ini</EyebrowLabel>
+          <p className="mt-1 text-xs text-slate-400">
+            Berdasarkan omzet tercatat bulan{" "}
+            <span className="font-medium text-navy">{formatMonth(proposal.month)}</span>
+          </p>
+        </div>
+      </div>
 
       {/* Revenue proxy context */}
-      <div className="mt-3 rounded-lg bg-white px-3 py-2">
+      <div className="mt-3 rounded-xl bg-slate-50 px-3.5 py-3">
         <div className="flex justify-between text-sm">
-          <span className="text-[#6B6458]">Omzet tercatat</span>
-          <span className="font-medium">{rupiah(proposal.netProfit)}</span>
+          <span className="text-slate-400">Omzet tercatat</span>
+          <span className="font-semibold text-navy">{rupiah(proposal.netProfit)}</span>
         </div>
-        <div className="mt-1 flex justify-between text-sm">
-          <span className="text-[#6B6458]">Saran tabungan (10%)</span>
+        <div className="mt-1.5 flex justify-between text-sm">
+          <span className="text-slate-400">Saran tabungan (10%)</span>
           <span className="font-bold text-teal">{rupiah(proposal.suggestedAmount)}</span>
         </div>
       </div>
 
-      <p className="mt-2 text-xs text-[#6B6458]">
+      <p className="mt-2.5 text-xs text-slate-400">
         Setujui untuk mencatat komitmen ini, atau tolak jika belum memungkinkan.
       </p>
 
@@ -931,18 +1061,18 @@ function SavingsPanel({ proposal, loading, onConfirm, onDecline }: SavingsPanelP
         <button
           onClick={onConfirm}
           disabled={loading}
-          className="flex-1 rounded-lg bg-teal px-3 py-2 text-sm font-semibold text-white disabled:opacity-50"
+          className="flex-1 rounded-xl bg-teal px-3 py-2.5 text-sm font-semibold text-white shadow-sm shadow-teal/30 transition hover:bg-teal/90 active:scale-[0.99] disabled:opacity-50"
         >
           {loading ? "…" : "✓ Setuju"}
         </button>
         <button
           onClick={onDecline}
           disabled={loading}
-          className="flex-1 rounded-lg border border-navy/20 px-3 py-2 text-sm font-semibold text-navy disabled:opacity-50"
+          className="flex-1 rounded-xl border border-navy/20 bg-white px-3 py-2.5 text-sm font-semibold text-navy transition hover:bg-navy/5 disabled:opacity-50"
         >
           {loading ? "…" : "Tolak"}
         </button>
       </div>
-    </div>
+    </SectionCard>
   );
 }
