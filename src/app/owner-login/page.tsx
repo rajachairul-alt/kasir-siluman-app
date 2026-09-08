@@ -48,12 +48,15 @@ function OwnerLoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#0F2338] to-[#1F3A56] px-4">
+    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#0F0F3D] to-[#191970] px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-white/10 text-2xl backdrop-blur">
-            👑
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.png"
+            alt="Kasir Siluman"
+            className="mx-auto mb-4 h-14 w-14 rounded-2xl shadow-lg shadow-black/30"
+          />
           <h1 className="text-2xl font-bold text-white">Kasir Siluman</h1>
           <p className="mt-1 text-sm text-white/60">Masuk sebagai pemilik untuk melihat dashboard</p>
         </div>

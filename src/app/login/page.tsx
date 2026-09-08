@@ -69,9 +69,12 @@ function LoginForm() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#FBF6EE] to-[#F3E9D8] px-4">
       <div className="w-full max-w-sm">
         <div className="text-center mb-8">
-          <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-[#1F3A56] text-2xl shadow-lg shadow-[#1F3A56]/20">
-            🛒
-          </div>
+          {/* eslint-disable-next-line @next/next/no-img-element */}
+          <img
+            src="/logo.png"
+            alt="Kasir Siluman"
+            className="mx-auto mb-4 h-14 w-14 rounded-2xl shadow-lg shadow-[#191970]/20"
+          />
           <h1 className="text-2xl font-bold text-[#1F3A56]">Kasir Siluman</h1>
           <p className="mt-1 text-sm text-[#6B6357]">Masuk sebagai pedagang untuk mulai berjualan</p>
         </div>

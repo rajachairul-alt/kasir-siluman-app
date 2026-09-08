@@ -4,6 +4,8 @@ export default function Home() {
   return (
     <main className="mx-auto flex min-h-screen max-w-md flex-col items-center justify-center gap-8 px-6 text-center">
       <div>
+        {/* eslint-disable-next-line @next/next/no-img-element */}
+        <img src="/logo.png" alt="Kasir Siluman" className="mx-auto mb-4 h-20 w-20 rounded-2xl shadow-lg shadow-navy/20" />
         <h1 className="text-3xl font-bold text-navy">Kasir Siluman</h1>
         <p className="mt-2 text-sm text-[#6B6458]">
           Copilot finansial otomatis untuk pedagang gerobak &amp; UMKM mikro.

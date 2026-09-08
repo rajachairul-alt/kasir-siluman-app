@@ -1,4 +1,8 @@
-# Kasir Siluman
+<p align="center">
+  <img src="public/logo.png" alt="Kasir Siluman logo" width="120" />
+</p>
+
+<h1 align="center">Kasir Siluman</h1>
 
 **Automatic financial copilot for street-food cart vendors and Indonesian micro-merchants** — built for the **HACKTIV8 × IBM SkillsBuild National Hackathon**.
 

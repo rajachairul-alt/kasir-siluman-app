@@ -512,9 +512,8 @@ export default function SessionPage() {
         {/* ── Topbar (BankDash-style: icon-circle brand mark, title, avatar) ── */}
         <div className="mb-5 flex items-center justify-between rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
           <div className="flex items-center gap-2.5">
-            <span className="flex h-10 w-10 items-center justify-center rounded-xl bg-navy text-lg text-white shadow-sm shadow-navy/20">
-              🛒
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Kasir Siluman" className="h-10 w-10 rounded-xl shadow-sm shadow-navy/20" />
             <div>
               <h1 className="text-sm font-extrabold leading-tight text-navy">Kasir Siluman</h1>
               <p className="text-xs text-slate-400">

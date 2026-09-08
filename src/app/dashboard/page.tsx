@@ -288,9 +288,8 @@ export default function DashboardPage() {
         {/* ── Sidebar (BankDash-style: logo, nav list with icon + label) ── */}
         <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-slate-100 bg-white px-5 py-6 lg:flex">
           <div className="mb-8 flex items-center gap-2.5 px-1">
-            <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-navy text-lg text-white shadow-sm shadow-navy/20">
-              👑
-            </span>
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img src="/logo.png" alt="Kasir Siluman" className="h-9 w-9 rounded-xl shadow-sm shadow-navy/20" />
             <span className="text-lg font-extrabold tracking-tight text-navy">Kasir Siluman.</span>
           </div>
 
@@ -343,9 +342,8 @@ export default function DashboardPage() {
               >
                 🚪
               </button>
-              <span className="flex h-9 w-9 items-center justify-center rounded-full bg-navy text-sm text-white shadow-sm">
-                👑
-              </span>
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img src="/logo.png" alt="Kasir Siluman" className="h-9 w-9 rounded-full shadow-sm" />
             </div>
           </div>
 
