@@ -15,10 +15,19 @@
 //     pressing the generate button first.
 
 import { PrismaClient } from "@prisma/client";
+import { PrismaLibSQL } from "@prisma/adapter-libsql";
+import { createClient } from "@libsql/client";
 import { reconcileSession, computeMonthlyRevenue, proposeMonthlySavings } from "../src/lib/reconciliation";
 import { writeAuditLog } from "../src/lib/auditLog";
 
-const db = new PrismaClient();
+const libsql = createClient({
+  url: process.env.TURSO_DATABASE_URL!,
+  authToken: process.env.TURSO_AUTH_TOKEN,
+});
+
+const adapter = new PrismaLibSQL(libsql);
+
+const db = new PrismaClient({ adapter });
 
 function currentMonth(): string {
   const now = new Date();
