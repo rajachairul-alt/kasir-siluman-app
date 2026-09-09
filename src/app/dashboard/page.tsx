@@ -177,6 +177,10 @@ const NAV_ITEMS = [
 ];
 
 export default function DashboardPage() {
+  // Mobile-only nav drawer — the sidebar in the return() below is `hidden`
+  // below the `lg` breakpoint, so on phones/tablets this toggle is the only
+  // way to reach the same section links (Sesi Pedagang / Log Agent / Tabungan).
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [rows, setRows] = useState<LedgerRow[]>([]);
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [merchantFilter, setMerchantFilter] = useState<string>(""); // "" = all
@@ -323,11 +327,22 @@ export default function DashboardPage() {
         <main className="min-h-screen flex-1 px-4 pb-16 pt-6 sm:px-6 lg:px-8">
           {/* ── Topbar ── */}
           <div className="mb-6 flex items-center justify-between gap-3">
-            <div>
-              <h1 id="ringkasan" className="scroll-mt-6 text-2xl font-extrabold text-navy">
-                Ringkasan
-              </h1>
-              <p className="mt-0.5 text-xs text-slate-400">Tampilan pemilik — pantauan jarak jauh</p>
+            <div className="flex items-center gap-3">
+              {/* Hamburger — only reachable way to the section menu below `lg` */}
+              <button
+                onClick={() => setMobileMenuOpen((v) => !v)}
+                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:bg-slate-50 lg:hidden"
+                aria-label={mobileMenuOpen ? "Tutup menu" : "Buka menu"}
+                aria-expanded={mobileMenuOpen}
+              >
+                {mobileMenuOpen ? "✕" : "☰"}
+              </button>
+              <div>
+                <h1 id="ringkasan" className="scroll-mt-6 text-2xl font-extrabold text-navy">
+                  Ringkasan
+                </h1>
+                <p className="mt-0.5 text-xs text-slate-400">Tampilan pemilik — pantauan jarak jauh</p>
+              </div>
             </div>
             <div className="flex items-center gap-2.5">
               {flaggedCount > 0 && (
@@ -335,17 +350,37 @@ export default function DashboardPage() {
                   🔔 {flaggedCount} perlu ditinjau
                 </span>
               )}
-              <button
-                onClick={handleLogout}
-                className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-sm text-slate-500 shadow-sm transition hover:bg-slate-50 lg:hidden"
-                title="Keluar"
-              >
-                🚪
-              </button>
               {/* eslint-disable-next-line @next/next/no-img-element */}
               <img src="/logo.png" alt="Kasir Siluman" className="h-9 w-9 rounded-full shadow-sm" />
             </div>
           </div>
+
+          {/* ── Mobile nav drawer — same links as the desktop sidebar ──
+              Only rendered below `lg`; toggled by the hamburger button above. */}
+          {mobileMenuOpen && (
+            <div className="mb-6 rounded-2xl border border-slate-100 bg-white p-2 shadow-sm lg:hidden">
+              <nav className="flex flex-col gap-1">
+                {NAV_ITEMS.map((item) => (
+                  <a
+                    key={item.href}
+                    href={item.href}
+                    onClick={() => setMobileMenuOpen(false)}
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-navy"
+                  >
+                    <span className="text-base">{item.icon}</span>
+                    {item.label}
+                  </a>
+                ))}
+                <button
+                  onClick={handleLogout}
+                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-400 transition hover:bg-slate-50 hover:text-red-500"
+                >
+                  <span className="text-base">🚪</span>
+                  Keluar
+                </button>
+              </nav>
+            </div>
+          )}
 
           {/* ── FLAGGED alert banner ─────────────────────────────────────────────
               PRD section 4: gaps must be visible to the owner "as-is", not hidden
