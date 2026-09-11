@@ -3,7 +3,6 @@
 import { useEffect, useRef, useState } from "react";
 import { extractFromAudio } from "@/lib/voiceToTransaction";
 import { getNeighborhoodPricing, type NeighborhoodPricing } from "@/lib/radarTetangga";
-import { generatePromo, type PromoResult } from "@/lib/generativePromo";
 
 // Seller-facing "Client Companion App" (PRD section 7, System Architecture).
 //
@@ -69,11 +68,11 @@ type RadarStatus =
   | "insufficient-data" // pipeline suppressed the result (sampleSize < 2)
   | "error";            // call failed
 
-type PromoStatus =
-  | "inactive"   // pipeline not yet wired — shown as honest placeholder
-  | "loading"    // context fetch + generatePromo() in flight
-  | "ready"      // result available
-  | "error";     // call failed
+// NOTE: Generative Promo ("Buat Promo") moved to the owner dashboard
+// (/dashboard) — see that file. Promo generation is an owner/marketing
+// decision, not something the seller needs mid-sale on this compact phone
+// screen, and /api/promo/context supports a merchantId lookup so the
+// dashboard doesn't need an active session to build context.
 
 // Shape returned by GET /api/savings
 interface SavingsProposal {
@@ -165,10 +164,6 @@ export default function SessionPage() {
   const [radarStatus, setRadarStatus] = useState<RadarStatus>("inactive");
   const [radarResult, setRadarResult] = useState<NeighborhoodPricing | null>(null);
   const [radarQuery, setRadarQuery] = useState(""); // item label to look up
-
-  // ── Generative Promo state ────────────────────────────────────────────────
-  const [promoStatus, setPromoStatus] = useState<PromoStatus>("inactive");
-  const [promoResult, setPromoResult] = useState<PromoResult | null>(null);
 
   // ── Tabungan bulanan state ────────────────────────────────────────────────
   const [pendingSavings, setPendingSavings] = useState<SavingsProposal | null>(null);
@@ -479,32 +474,6 @@ export default function SessionPage() {
     }
   }
 
-  // ── Generative Promo ──────────────────────────────────────────────────────
-  async function buatPromo() {
-    if (!session) return;
-    setPromoStatus("loading");
-    setPromoResult(null);
-    try {
-      // Step 1: fetch aggregated context from the database — no manual input.
-      const ctxRes = await fetch(
-        `/api/promo/context?sessionId=${encodeURIComponent(session.id)}`
-      );
-      if (!ctxRes.ok) {
-        throw new Error(`Context fetch gagal: ${ctxRes.status}`);
-      }
-      const context = await ctxRes.json();
-
-      // Step 2: call the Langflow pipeline boundary.
-      const promo = await generatePromo(context);
-      setPromoResult(promo);
-      setPromoStatus("ready");
-    } catch (err) {
-      // Pipeline is live — all errors go to "error" state, not "inactive".
-      console.error("[buatPromo]", err);
-      setPromoStatus("error");
-    }
-  }
-
   // ── Render ────────────────────────────────────────────────────────────────
   return (
     <div className="min-h-screen bg-[#F3F5FB]">
@@ -624,9 +593,6 @@ export default function SessionPage() {
               onQueryChange={setRadarQuery}
               onQuery={queryRadar}
             />
-
-            {/* ── Generative Promo ── */}
-            <PromoPanel status={promoStatus} result={promoResult} onGenerate={buatPromo} />
 
             {/* ── Tabungan Bulanan ── only shown when there is a pending proposal */}
             {pendingSavings && (
@@ -930,80 +896,6 @@ function RadarTetanggaPanel({
       {status === "error" && (
         <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
           Gagal mengambil data radar. Coba lagi.
-        </p>
-      )}
-    </SectionCard>
-  );
-}
-
-// ── PromoPanel sub-component ──────────────────────────────────────────────────
-// Triggers context aggregation + Generative Promo pipeline, displays result.
-//
-// Context is always built from real Transaction data via /api/promo/context —
-// never from text typed in by the seller.  See src/lib/generativePromo.ts.
-
-interface PromoPanelProps {
-  status: PromoStatus;
-  result: PromoResult | null;
-  onGenerate: () => void;
-}
-
-function PromoPanel({ status, result, onGenerate }: PromoPanelProps) {
-  return (
-    <SectionCard>
-      <div className="flex items-start gap-2.5">
-        <IconCircle tone="orange">✨</IconCircle>
-        <div className="pt-0.5">
-          <EyebrowLabel>Buat Promo</EyebrowLabel>
-          <p className="mt-1 text-xs text-slate-400">
-            Buat teks poster dan prompt gambar dari data penjualan terbaru Anda.
-          </p>
-        </div>
-      </div>
-
-      <button
-        onClick={onGenerate}
-        disabled={status === "loading"}
-        className="mt-3 flex w-full items-center justify-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-navy/90 active:scale-[0.99] disabled:opacity-50"
-      >
-        <span>✨</span>
-        {status === "loading" ? "Sedang membuat promo…" : "Buat Promo"}
-      </button>
-
-      {/* ── Result states ── */}
-      {status === "inactive" && (
-        <p className="mt-3 text-xs text-slate-400">
-          Tekan tombol di atas untuk membuat teks promo dari data penjualan terbaru.
-        </p>
-      )}
-
-      {status === "loading" && (
-        <p className="mt-3 text-xs text-slate-400">Mengambil konteks dan membuat promo…</p>
-      )}
-
-      {status === "ready" && result && (
-        <div className="mt-3 flex flex-col gap-3">
-          {/* Poster copy */}
-          <div className="rounded-xl bg-slate-50 px-3.5 py-3">
-            <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Teks Poster
-            </p>
-            <p className="whitespace-pre-wrap text-sm text-navy">{result.posterText}</p>
-          </div>
-
-          {/* Image prompt — displayed as read-only text to copy into an image tool */}
-          <div className="rounded-xl border border-dashed border-navy/20 px-3.5 py-3">
-            <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
-              Prompt Gambar
-            </p>
-            <p className="text-xs italic text-slate-400">{result.imagePrompt}</p>
-          </div>
-        </div>
-      )}
-
-      {status === "error" && (
-        <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
-          Gagal membuat promo. Coba lagi.
         </p>
       )}
     </SectionCard>

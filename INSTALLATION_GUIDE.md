@@ -55,6 +55,34 @@ Copy from `.env.example`. **Never commit `.env` with real values** — it's alre
 
 Self-host Langflow (`pip install langflow` then `langflow run`, default port 7860), or use Langflow Cloud. Build three flows. All three end in a component that returns a single clean JSON string — the Next.js routes look for that exact JSON shape, not any particular wording of it.
 
+### 4.0 Demo-day hosting: self-hosted Langflow + ngrok
+
+Railway's free/trial plan OOM-kills the Langflow worker on boot (needs more memory than the trial tier grants), and we don't want to pay to upgrade a plan for a few demo days. Instead, Langflow runs **locally on the presenter's laptop** and is exposed to the internet with **ngrok**, so `LANGFLOW_BASE_URL` on Vercel points at a public ngrok URL that forwards to `localhost:7860`. This is a manual, demo-day-only setup — do it fresh (or at least re-verify it) shortly before presenting, not days in advance, since a free ngrok URL can change between runs unless you reserve a static one (see below).
+
+**One-time setup:**
+
+1. Install Langflow if not already present: `pip install langflow` (the machine already has a `~/.langflow` and `~/langflow` folder from earlier work — check `langflow --version` first; it may already be installed).
+2. Install ngrok: download from https://ngrok.com/download, or `choco install ngrok` on Windows. Sign up for a free ngrok account and run `ngrok config add-authtoken <your-token>` once (token is in the ngrok dashboard).
+3. **Strongly recommended:** claim a free static domain from the ngrok dashboard (Cloud Edge → Domains → "New Domain" — free accounts get one static `*.ngrok-free.app` domain at no cost). This keeps the URL identical every time you restart the tunnel, so you don't have to touch Vercel env vars again after the first setup.
+
+**Every time before demoing (or a rehearsal):**
+
+1. Start Langflow: `langflow run --host 0.0.0.0 --port 7860`. Wait for `Uvicorn running on http://0.0.0.0:7860`. If this is the very first run and `LANGFLOW_SUPERUSER_PASSWORD` isn't set as an env var, Langflow auto-generates an admin user and prints the password once in the terminal — save it (a password manager, not to Claude).
+2. Start the tunnel in a second terminal:
+   - With a reserved domain: `ngrok http --domain=<your-name>.ngrok-free.app 7860`
+   - Without one (URL changes every restart): `ngrok http 7860`
+3. Note the `https://...ngrok-free.app` URL ngrok prints — that's the new `LANGFLOW_BASE_URL`.
+4. In Vercel → Project → Settings → Environment Variables, set `LANGFLOW_BASE_URL` to that URL (no trailing slash) and **redeploy** (env var changes need a redeploy to take effect on Vercel). If you claimed a static domain, you only need to do this once, ever — restarts reuse the same URL.
+5. Sanity check before presenting: open the ngrok URL directly in a browser. You should see the Langflow login page load (not a Railway/ngrok error). Then trigger one real request from the deployed app (e.g. a voice capture) to confirm Next.js on Vercel can actually reach it end-to-end.
+
+**Gotchas specific to this setup (already handled in code, listed here so you know why):**
+
+- **ngrok's free-tier browser warning page**: by default, a free ngrok tunnel serves an HTML "you are about to visit..." interstitial to any request that doesn't send the `ngrok-skip-browser-warning` header — which would otherwise silently break every Langflow call (Next.js expects JSON, gets HTML back). This header is already added to every outgoing Langflow request in `src/lib/langflowRun.ts` and `src/app/api/voice/extract/route.ts` (upload + delete calls). No action needed, just don't remove it.
+- **The laptop is now a production dependency.** Sleep, screen lock, Windows updates, WiFi drop, or closing the terminal windows will all take the whole Langflow integration down mid-demo. Before presenting: plug in the charger, disable sleep/screen-lock (Settings → System → Power), keep both terminal windows (Langflow + ngrok) open and visible, and prefer a wired/stable connection over flaky WiFi.
+- **CORS is a non-issue here** — the browser never talks to Langflow directly. All three Langflow calls happen server-side from Vercel's serverless functions (`/api/voice/extract`, `/api/radar`, `/api/promo/generate`), so `LANGFLOW_CORS_ORIGINS` doesn't need to be touched.
+- **Free ngrok session limits**: ngrok's free plan disconnects a tunnel after ~2 hours or on agent restart, and only allows one tunnel/agent at a time per account — restart the `ngrok http` command if it drops, which is instant with a reserved domain and requires no Vercel changes.
+- **Fallback if the laptop can't be online during the actual demo slot** (e.g. presenting from a different machine): run this whole setup on whatever machine will be online at demo time, not necessarily this one — Langflow + ngrok have no dependency on this specific laptop beyond where you happened to install them.
+
 **Security note:** store the watsonx.ai API key and any other secret as a Langflow **Global Variable** (Settings → Global Variables), and reference it from the component field rather than pasting the raw value in — Langflow's flow-export JSON embeds whatever is typed directly into a field in plaintext, including credentials. If you ever export a flow for backup or sharing, check the exported JSON for embedded secrets before storing or sharing it. Flow exports are intentionally **not** committed to this repository for that reason.
 
 ### 4.1 Voice-to-Transaction

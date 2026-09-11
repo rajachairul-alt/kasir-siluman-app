@@ -100,7 +100,11 @@ export async function POST(req: NextRequest) {
     );
   }
 
-  const headers = { "x-api-key": apiKey };
+  // "ngrok-skip-browser-warning" is only needed when LANGFLOW_BASE_URL points
+  // at a free ngrok tunnel (self-hosted Langflow demo setup) — otherwise
+  // ngrok returns its HTML interstitial instead of proxying to Langflow.
+  // Harmless no-op against a Langflow host not behind ngrok.
+  const headers = { "x-api-key": apiKey, "ngrok-skip-browser-warning": "true" };
   let uploadedFilePath: string | null = null;
 
   try {

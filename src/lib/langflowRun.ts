@@ -57,7 +57,16 @@ export async function runLangflowFlow(
     try {
       const runRes = await fetch(`${baseUrl}/api/v1/run/${flowId}?stream=false`, {
         method: "POST",
-        headers: { "Content-Type": "application/json", "x-api-key": apiKey },
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKey,
+          // Required when LANGFLOW_BASE_URL points at a free ngrok tunnel
+          // (self-hosted Langflow demo setup): without this header ngrok
+          // serves an HTML "visit site" interstitial instead of proxying
+          // the request, which breaks JSON parsing below. Harmless no-op
+          // against a real Langflow host that isn't behind ngrok.
+          "ngrok-skip-browser-warning": "true",
+        },
         body: JSON.stringify({
           input_value: "",
           input_type: "text",

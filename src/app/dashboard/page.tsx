@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { generatePromo, type PromoResult } from "@/lib/generativePromo";
 
 // Owner Dashboard (PRD section 7 & section 10, Feature Breakdown, P0).
 //
@@ -172,9 +173,16 @@ function StatCard({
 const NAV_ITEMS = [
   { href: "#ringkasan", icon: "🏠", label: "Ringkasan" },
   { href: "#sesi", icon: "🧾", label: "Sesi Pedagang" },
+  { href: "#promo", icon: "✨", label: "Buat Promo" },
   { href: "#log-agent", icon: "🛡️", label: "Log Keputusan Agent" },
   { href: "#tabungan", icon: "💰", label: "Tabungan Bulanan" },
 ];
+
+type PromoStatus =
+  | "idle"     // nothing generated yet this page load
+  | "loading"  // context fetch + generatePromo() in flight
+  | "ready"    // result available
+  | "error";   // call failed
 
 export default function DashboardPage() {
   // Mobile-only nav drawer — the sidebar in the return() below is `hidden`
@@ -194,6 +202,14 @@ export default function DashboardPage() {
   // ── Audit Log state ───────────────────────────────────────────────────────
   const [auditLogs, setAuditLogs] = useState<AuditLogEntry[]>([]);
   const [auditLoading, setAuditLoading] = useState(true);
+
+  // ── Generative Promo state ────────────────────────────────────────────────
+  // Moved here from /session — this is an owner/marketing decision, not
+  // something the seller needs mid-sale on a compact phone screen, and
+  // /api/promo/context accepts a merchantId directly (no active session
+  // required) so building context here needs no session to be open.
+  const [promoStatus, setPromoStatus] = useState<PromoStatus>("idle");
+  const [promoResult, setPromoResult] = useState<PromoResult | null>(null);
 
   // Re-fetch whenever the merchant filter changes.
   useEffect(() => {
@@ -226,6 +242,14 @@ export default function DashboardPage() {
       .then((data: SavingsProposal[]) => setSavings(data ?? []))
       .catch(() => setSavings([]))
       .finally(() => setSavingsLoading(false));
+  }, [merchantFilter]);
+
+  // Clear any generated promo when the merchant filter changes — a promo
+  // generated for one merchant should never linger and look like it belongs
+  // to a different one after switching the filter.
+  useEffect(() => {
+    setPromoStatus("idle");
+    setPromoResult(null);
   }, [merchantFilter]);
 
   // Fetch audit log whenever the merchant filter changes.
@@ -268,6 +292,38 @@ export default function DashboardPage() {
       console.error("[generateProposals]", err);
     } finally {
       setGenerateLoading(false);
+    }
+  }
+
+  // ── Generative Promo ──────────────────────────────────────────────────────
+  // Requires a specific merchant to be selected in the filter above — promo
+  // copy is per-merchant, so "Semua pedagang" has no single context to build.
+  // When there's only one merchant total, the filter dropdown itself is
+  // hidden (see `merchants.length > 1` below) and merchantFilter stays "",
+  // so fall back to that single merchant implicitly.
+  async function buatPromo() {
+    const targetMerchantId =
+      merchantFilter || (merchants.length === 1 ? merchants[0].id : "");
+    if (!targetMerchantId) return;
+    setPromoStatus("loading");
+    setPromoResult(null);
+    try {
+      // Step 1: fetch aggregated context from the database — no manual input.
+      const ctxRes = await fetch(
+        `/api/promo/context?merchantId=${encodeURIComponent(targetMerchantId)}`
+      );
+      if (!ctxRes.ok) {
+        throw new Error(`Context fetch gagal: ${ctxRes.status}`);
+      }
+      const context = await ctxRes.json();
+
+      // Step 2: call the Langflow pipeline boundary.
+      const promo = await generatePromo(context);
+      setPromoResult(promo);
+      setPromoStatus("ready");
+    } catch (err) {
+      console.error("[buatPromo]", err);
+      setPromoStatus("error");
     }
   }
 
@@ -473,6 +529,73 @@ export default function DashboardPage() {
               </select>
             </div>
           )}
+
+          {/* ── Generative Promo ─────────────────────────────────────────────────
+              Requires a specific merchant selected above — promo copy is
+              built from that merchant's recent transactions via
+              /api/promo/context, never from free-typed text (PRD section 4). */}
+          <div id="promo" className="mb-8 scroll-mt-6">
+            <SectionHeading
+              icon="✨"
+              title="Buat Promo"
+              subtitle="Buat teks poster dan prompt gambar dari data penjualan terbaru pedagang."
+            />
+            <Panel className="p-4">
+              {merchants.length > 1 && !merchantFilter ? (
+                <p className="text-sm text-slate-400">
+                  Pilih satu pedagang di filter di atas untuk membuat promo — teks promo dibuat
+                  dari data penjualan pedagang tertentu, bukan gabungan semua pedagang.
+                </p>
+              ) : (
+                <>
+                  <button
+                    onClick={buatPromo}
+                    disabled={promoStatus === "loading" || (!merchantFilter && merchants.length !== 1)}
+                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-navy/90 active:scale-[0.99] disabled:opacity-50 sm:w-auto"
+                  >
+                    <span>✨</span>
+                    {promoStatus === "loading" ? "Sedang membuat promo…" : "Buat Promo"}
+                  </button>
+
+                  {promoStatus === "idle" && (
+                    <p className="mt-3 text-xs text-slate-400">
+                      Tekan tombol di atas untuk membuat teks promo dari data penjualan terbaru
+                      {merchants.length === 1 ? ` ${merchants[0].name}` : ""}.
+                    </p>
+                  )}
+
+                  {promoStatus === "loading" && (
+                    <p className="mt-3 text-xs text-slate-400">Mengambil konteks dan membuat promo…</p>
+                  )}
+
+                  {promoStatus === "ready" && promoResult && (
+                    <div className="mt-3 grid gap-3 sm:grid-cols-2">
+                      <div className="rounded-xl bg-slate-50 px-3.5 py-3">
+                        <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                          Teks Poster
+                        </p>
+                        <p className="whitespace-pre-wrap text-sm text-navy">
+                          {promoResult.posterText}
+                        </p>
+                      </div>
+                      <div className="rounded-xl border border-dashed border-navy/20 px-3.5 py-3">
+                        <p className="mb-1 text-[11px] font-bold uppercase tracking-wider text-slate-400">
+                          Prompt Gambar
+                        </p>
+                        <p className="text-xs italic text-slate-400">{promoResult.imagePrompt}</p>
+                      </div>
+                    </div>
+                  )}
+
+                  {promoStatus === "error" && (
+                    <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
+                      Gagal membuat promo. Coba lagi.
+                    </p>
+                  )}
+                </>
+              )}
+            </Panel>
+          </div>
 
           {/* ── Session table ────────────────────────────────────────────────────── */}
           <h2 id="sesi" className="mb-3 scroll-mt-6 text-base font-bold text-navy">
