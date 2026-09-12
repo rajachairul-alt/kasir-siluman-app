@@ -1,6 +1,21 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { IBM_Plex_Sans } from "next/font/google";
+import {
+  House,
+  Receipt,
+  Sparkle,
+  Shield,
+  PiggyBank,
+  SignOut,
+  List,
+  X,
+  Bell,
+  WarningCircle,
+  CheckCircle,
+  Wallet,
+} from "@phosphor-icons/react";
 import { generatePromo, type PromoResult } from "@/lib/generativePromo";
 
 // Owner Dashboard (PRD section 7 & section 10, Feature Breakdown, P0).
@@ -11,12 +26,19 @@ import { generatePromo, type PromoResult } from "@/lib/generativePromo";
 // FLAGGED sessions therefore appear as a prominent alert above everything
 // else, not just as a coloured row inside a table.
 //
-// NOTE ON THIS FILE: only the visual layer (JSX markup / Tailwind classes)
-// was redesigned — this pass restyles the layout as a sidebar + topbar admin
-// dashboard (referencing the "BankDash" Figma admin-dashboard UI kit: white
-// card panels on a cool light-gray canvas, pastel icon-circle stat tiles,
-// quiet tables with pill status badges). All state, effects, handlers, and
-// business logic are unchanged from the original implementation.
+// NOTE ON THIS FILE: only the visual layer (JSX markup / Tailwind classes /
+// icons / typography) was redesigned — a Swiss-minimalist finance-dashboard
+// pass (clean grid, generous whitespace, real SVG icons via Phosphor instead
+// of emoji, IBM Plex Sans for a professional/financial feel) scoped to this
+// page only. Every state hook, effect, handler, fetch call, and business
+// rule below is byte-for-byte the same as before this pass — the backend
+// and data flow are untouched.
+
+const ibmPlexSans = IBM_Plex_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
 
 interface Merchant {
   id: string;
@@ -94,13 +116,21 @@ function Panel({ children, className = "" }: { children: React.ReactNode; classN
   );
 }
 
-function SectionHeading({ icon, title, subtitle }: { icon: string; title: string; subtitle?: string }) {
+function SectionHeading({
+  icon,
+  title,
+  subtitle,
+}: {
+  icon: React.ReactNode;
+  title: string;
+  subtitle?: string;
+}) {
   return (
     <div className="mb-3 flex items-start gap-2.5">
       <IconCircle tone="navy">{icon}</IconCircle>
       <div className="pt-0.5">
         <h2 className="text-base font-bold text-navy">{title}</h2>
-        {subtitle && <p className="mt-0.5 text-xs text-slate-400">{subtitle}</p>}
+        {subtitle && <p className="mt-0.5 text-xs leading-relaxed text-slate-400">{subtitle}</p>}
       </div>
     </div>
   );
@@ -110,13 +140,15 @@ function StatusPill({ status }: { status: string }) {
   if (status === "RECONCILED") {
     return (
       <span className="inline-flex items-center gap-1 rounded-full bg-teal/10 px-2.5 py-1 text-xs font-semibold text-teal">
-        ✓ Cocok
+        <CheckCircle size={13} weight="bold" aria-hidden="true" />
+        Cocok
       </span>
     );
   }
   return (
     <span className="inline-flex items-center gap-1 rounded-full bg-red-50 px-2.5 py-1 text-xs font-semibold text-red-600">
-      ⚠ Selisih
+      <WarningCircle size={13} weight="bold" aria-hidden="true" />
+      Selisih
     </span>
   );
 }
@@ -134,7 +166,8 @@ const toneClasses: Record<Tone, string> = {
 function IconCircle({ children, tone = "navy" }: { children: React.ReactNode; tone?: Tone }) {
   return (
     <span
-      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base ${toneClasses[tone]}`}
+      aria-hidden="true"
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${toneClasses[tone]}`}
     >
       {children}
     </span>
@@ -149,7 +182,7 @@ function StatCard({
   sub,
   highlight = false,
 }: {
-  icon: string;
+  icon: React.ReactNode;
   tone: Tone;
   label: string;
   value: string;
@@ -162,7 +195,9 @@ function StatCard({
         <IconCircle tone={tone}>{icon}</IconCircle>
         <div className="min-w-0">
           <p className="truncate text-xs font-medium text-slate-400">{label}</p>
-          <p className={`text-lg font-bold ${highlight ? "text-red-600" : "text-navy"}`}>{value}</p>
+          <p className={`text-lg font-bold tabular-nums ${highlight ? "text-red-600" : "text-navy"}`}>
+            {value}
+          </p>
         </div>
       </div>
       {sub && <p className="mt-2 text-[11px] text-slate-400">{sub}</p>}
@@ -170,12 +205,14 @@ function StatCard({
   );
 }
 
+const ICON_SIZE = 18;
+
 const NAV_ITEMS = [
-  { href: "#ringkasan", icon: "🏠", label: "Ringkasan" },
-  { href: "#sesi", icon: "🧾", label: "Sesi Pedagang" },
-  { href: "#promo", icon: "✨", label: "Buat Promo" },
-  { href: "#log-agent", icon: "🛡️", label: "Log Keputusan Agent" },
-  { href: "#tabungan", icon: "💰", label: "Tabungan Bulanan" },
+  { href: "#ringkasan", icon: <House size={ICON_SIZE} aria-hidden="true" />, label: "Ringkasan" },
+  { href: "#sesi", icon: <Receipt size={ICON_SIZE} aria-hidden="true" />, label: "Sesi Pedagang" },
+  { href: "#promo", icon: <Sparkle size={ICON_SIZE} aria-hidden="true" />, label: "Buat Promo" },
+  { href: "#log-agent", icon: <Shield size={ICON_SIZE} aria-hidden="true" />, label: "Log Keputusan Agent" },
+  { href: "#tabungan", icon: <PiggyBank size={ICON_SIZE} aria-hidden="true" />, label: "Tabungan Bulanan" },
 ];
 
 type PromoStatus =
@@ -343,14 +380,14 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-[#F3F5FB]">
+    <div className={`min-h-screen bg-[#F3F5FB] ${ibmPlexSans.className}`}>
       <div className="mx-auto flex min-h-screen max-w-[1400px]">
-        {/* ── Sidebar (BankDash-style: logo, nav list with icon + label) ── */}
+        {/* ── Sidebar: logo, nav list with icon + label ── */}
         <aside className="sticky top-0 hidden h-screen w-64 shrink-0 flex-col border-r border-slate-100 bg-white px-5 py-6 lg:flex">
           <div className="mb-8 flex items-center gap-2.5 px-1">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src="/logo.png" alt="Kasir Siluman" className="h-9 w-9 rounded-xl shadow-sm shadow-navy/20" />
-            <span className="text-lg font-extrabold tracking-tight text-navy">Kasir Siluman.</span>
+            <span className="text-lg font-bold tracking-tight text-navy">Kasir Siluman</span>
           </div>
 
           <nav className="flex flex-1 flex-col gap-1">
@@ -358,13 +395,13 @@ export default function DashboardPage() {
               <a
                 key={item.href}
                 href={item.href}
-                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition ${
+                className={`flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium transition duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30 ${
                   i === 0
                     ? "border-l-[3px] border-navy bg-navy/[0.06] text-navy"
                     : "border-l-[3px] border-transparent text-slate-500 hover:bg-slate-50 hover:text-navy"
                 }`}
               >
-                <span className="text-base">{item.icon}</span>
+                {item.icon}
                 {item.label}
               </a>
             ))}
@@ -372,9 +409,9 @@ export default function DashboardPage() {
 
           <button
             onClick={handleLogout}
-            className="mt-4 flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition hover:bg-slate-50 hover:text-red-500"
+            className="mt-4 flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-400 transition duration-200 hover:bg-slate-50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30"
           >
-            <span className="text-base">🚪</span>
+            <SignOut size={ICON_SIZE} aria-hidden="true" />
             Keluar
           </button>
         </aside>
@@ -387,14 +424,14 @@ export default function DashboardPage() {
               {/* Hamburger — only reachable way to the section menu below `lg` */}
               <button
                 onClick={() => setMobileMenuOpen((v) => !v)}
-                className="flex h-9 w-9 shrink-0 items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition hover:bg-slate-50 lg:hidden"
+                className="flex h-9 w-9 shrink-0 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white text-slate-500 shadow-sm transition duration-200 hover:bg-slate-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30 lg:hidden"
                 aria-label={mobileMenuOpen ? "Tutup menu" : "Buka menu"}
                 aria-expanded={mobileMenuOpen}
               >
-                {mobileMenuOpen ? "✕" : "☰"}
+                {mobileMenuOpen ? <X size={18} /> : <List size={18} />}
               </button>
               <div>
-                <h1 id="ringkasan" className="scroll-mt-6 text-2xl font-extrabold text-navy">
+                <h1 id="ringkasan" className="scroll-mt-6 text-2xl font-bold tracking-tight text-navy">
                   Ringkasan
                 </h1>
                 <p className="mt-0.5 text-xs text-slate-400">Tampilan pemilik — pantauan jarak jauh</p>
@@ -403,7 +440,8 @@ export default function DashboardPage() {
             <div className="flex items-center gap-2.5">
               {flaggedCount > 0 && (
                 <span className="hidden items-center gap-1.5 rounded-full bg-red-50 px-3 py-1.5 text-xs font-semibold text-red-600 sm:flex">
-                  🔔 {flaggedCount} perlu ditinjau
+                  <Bell size={14} weight="bold" aria-hidden="true" />
+                  {flaggedCount} perlu ditinjau
                 </span>
               )}
               {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -421,17 +459,17 @@ export default function DashboardPage() {
                     key={item.href}
                     href={item.href}
                     onClick={() => setMobileMenuOpen(false)}
-                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition hover:bg-slate-50 hover:text-navy"
+                    className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-sm font-medium text-slate-600 transition duration-200 hover:bg-slate-50 hover:text-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30"
                   >
-                    <span className="text-base">{item.icon}</span>
+                    {item.icon}
                     {item.label}
                   </a>
                 ))}
                 <button
                   onClick={handleLogout}
-                  className="flex items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-400 transition hover:bg-slate-50 hover:text-red-500"
+                  className="flex cursor-pointer items-center gap-3 rounded-xl px-3 py-2.5 text-left text-sm font-medium text-slate-400 transition duration-200 hover:bg-slate-50 hover:text-red-500 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30"
                 >
-                  <span className="text-base">🚪</span>
+                  <SignOut size={ICON_SIZE} aria-hidden="true" />
                   Keluar
                 </button>
               </nav>
@@ -445,10 +483,12 @@ export default function DashboardPage() {
           {!loading && flaggedCount > 0 && (
             <div className="mb-6 rounded-2xl border-2 border-red-200 bg-red-50/70 p-4 shadow-sm">
               <div className="flex items-start gap-3">
-                <IconCircle tone="red">⚠️</IconCircle>
+                <IconCircle tone="red">
+                  <WarningCircle size={18} weight="bold" />
+                </IconCircle>
                 <div className="flex-1">
                   <p className="font-bold text-red-700">{flaggedCount} sesi perlu ditinjau</p>
-                  <p className="mt-0.5 text-xs text-red-500">
+                  <p className="mt-0.5 text-xs leading-relaxed text-red-500">
                     Selisih antara estimasi tangkapan suara dan laporan tutup buku melebihi
                     toleransi. Tinjau bersama pedagang.
                   </p>
@@ -463,7 +503,7 @@ export default function DashboardPage() {
                       >
                         <span className="font-semibold text-red-700">{r.merchant.name}</span>
                         <span className="text-xs text-red-400">{shortDate(r.closedAt)}</span>
-                        <span className="ml-auto font-bold text-red-600">
+                        <span className="ml-auto font-bold tabular-nums text-red-600">
                           Selisih {rupiah(r.varianceAmount ?? 0)}
                         </span>
                       </li>
@@ -476,10 +516,20 @@ export default function DashboardPage() {
 
           {/* ── Summary stat cards ──────────────────────────────────────────────── */}
           <div className="mb-6 grid grid-cols-2 gap-3 sm:gap-4 lg:grid-cols-4">
-            <StatCard icon="💵" tone="navy" label="Total omzet tercatat" value={rupiah(totalOmzet)} />
-            <StatCard icon="🧾" tone="slate" label="Total sesi tercatat" value={String(rows.length)} />
             <StatCard
-              icon="⚠️"
+              icon={<Wallet size={18} />}
+              tone="navy"
+              label="Total omzet tercatat"
+              value={rupiah(totalOmzet)}
+            />
+            <StatCard
+              icon={<Receipt size={18} />}
+              tone="slate"
+              label="Total sesi tercatat"
+              value={String(rows.length)}
+            />
+            <StatCard
+              icon={<WarningCircle size={18} weight="bold" />}
               tone={flaggedCount > 0 ? "red" : "slate"}
               label="Sesi perlu ditinjau"
               value={String(flaggedCount)}
@@ -487,11 +537,17 @@ export default function DashboardPage() {
             />
             <Panel className="p-4">
               <div className="flex items-center gap-3">
-                <IconCircle tone="teal">💰</IconCircle>
+                <IconCircle tone="teal">
+                  <PiggyBank size={18} />
+                </IconCircle>
                 <div className="min-w-0">
                   <p className="truncate text-xs font-medium text-slate-400">Tabungan dikonfirmasi</p>
-                  <p className="text-lg font-bold text-teal">
-                    {savingsLoading ? "…" : rupiah(confirmedSavingsThisMonth)}
+                  <p className="text-lg font-bold tabular-nums text-teal">
+                    {savingsLoading ? (
+                      <span className="inline-block animate-pulse text-slate-300">…</span>
+                    ) : (
+                      rupiah(confirmedSavingsThisMonth)
+                    )}
                   </p>
                 </div>
               </div>
@@ -499,7 +555,7 @@ export default function DashboardPage() {
               <button
                 onClick={generateProposals}
                 disabled={generateLoading || merchants.length === 0}
-                className="mt-3 w-full rounded-xl bg-teal px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-teal/30 transition hover:bg-teal/90 disabled:opacity-50"
+                className="mt-3 w-full cursor-pointer rounded-xl bg-teal px-3 py-2 text-xs font-semibold text-white shadow-sm shadow-teal/30 transition duration-200 hover:bg-teal/90 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/40 disabled:cursor-not-allowed disabled:opacity-50"
               >
                 {generateLoading ? "Membuat…" : "Generate proposal bulan ini"}
               </button>
@@ -518,7 +574,7 @@ export default function DashboardPage() {
                 id="merchant-filter"
                 value={merchantFilter}
                 onChange={(e) => setMerchantFilter(e.target.value)}
-                className="rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm shadow-sm outline-none transition focus:border-navy/40 focus:ring-2 focus:ring-navy/10"
+                className="cursor-pointer rounded-xl border border-slate-200 bg-white px-3 py-1.5 text-sm shadow-sm outline-none transition duration-200 focus:border-navy/40 focus-visible:ring-2 focus-visible:ring-navy/20"
               >
                 <option value="">Semua pedagang</option>
                 {merchants.map((m) => (
@@ -536,13 +592,13 @@ export default function DashboardPage() {
               /api/promo/context, never from free-typed text (PRD section 4). */}
           <div id="promo" className="mb-8 scroll-mt-6">
             <SectionHeading
-              icon="✨"
+              icon={<Sparkle size={18} />}
               title="Buat Promo"
               subtitle="Buat teks poster dan prompt gambar dari data penjualan terbaru pedagang."
             />
             <Panel className="p-4">
               {merchants.length > 1 && !merchantFilter ? (
-                <p className="text-sm text-slate-400">
+                <p className="text-sm leading-relaxed text-slate-400">
                   Pilih satu pedagang di filter di atas untuk membuat promo — teks promo dibuat
                   dari data penjualan pedagang tertentu, bukan gabungan semua pedagang.
                 </p>
@@ -551,9 +607,9 @@ export default function DashboardPage() {
                   <button
                     onClick={buatPromo}
                     disabled={promoStatus === "loading" || (!merchantFilter && merchants.length !== 1)}
-                    className="flex w-full items-center justify-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-navy/90 active:scale-[0.99] disabled:opacity-50 sm:w-auto"
+                    className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition duration-200 hover:bg-navy/90 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/40 disabled:cursor-not-allowed disabled:opacity-50 sm:w-auto"
                   >
-                    <span>✨</span>
+                    <Sparkle size={16} weight="bold" aria-hidden="true" />
                     {promoStatus === "loading" ? "Sedang membuat promo…" : "Buat Promo"}
                   </button>
 
@@ -588,7 +644,8 @@ export default function DashboardPage() {
                   )}
 
                   {promoStatus === "error" && (
-                    <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
+                    <p className="mt-3 flex items-center gap-1.5 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-600">
+                      <WarningCircle size={14} weight="bold" aria-hidden="true" />
                       Gagal membuat promo. Coba lagi.
                     </p>
                   )}
@@ -619,19 +676,21 @@ export default function DashboardPage() {
                   {rows.map((r) => (
                     <tr
                       key={r.id}
-                      className={`transition hover:bg-slate-50 ${
+                      className={`transition duration-200 hover:bg-slate-50 ${
                         r.status === "FLAGGED" ? "bg-red-50/40" : ""
                       }`}
                     >
                       <td className="px-4 py-2.5 font-medium text-navy">{r.merchant.name}</td>
                       <td className="px-4 py-2.5 text-slate-500">{shortDate(r.closedAt)}</td>
-                      <td className="px-4 py-2.5 text-slate-500">{rupiah(r.qrisTotal)}</td>
-                      <td className="px-4 py-2.5 text-slate-500">{rupiah(r.voiceCashEstimate)}</td>
-                      <td className="px-4 py-2.5 text-slate-500">
+                      <td className="px-4 py-2.5 tabular-nums text-slate-500">{rupiah(r.qrisTotal)}</td>
+                      <td className="px-4 py-2.5 tabular-nums text-slate-500">
+                        {rupiah(r.voiceCashEstimate)}
+                      </td>
+                      <td className="px-4 py-2.5 tabular-nums text-slate-500">
                         {rupiah(r.closingReportTotal ?? 0)}
                       </td>
                       <td
-                        className={`px-4 py-2.5 font-semibold ${
+                        className={`px-4 py-2.5 font-semibold tabular-nums ${
                           r.status === "FLAGGED" ? "text-red-600" : "text-navy"
                         }`}
                       >
@@ -645,7 +704,7 @@ export default function DashboardPage() {
                   {loading && (
                     <tr>
                       <td colSpan={7} className="px-4 py-8 text-center text-slate-400">
-                        Memuat…
+                        <span className="animate-pulse">Memuat…</span>
                       </td>
                     </tr>
                   )}
@@ -669,7 +728,7 @@ export default function DashboardPage() {
               Data comes from GET /api/audit-log (public read-only proxy). */}
           <div className="mt-8">
             <SectionHeading
-              icon="🛡️"
+              icon={<Shield size={18} />}
               title="Log Keputusan Agent"
               subtitle={
                 'Setiap rekonsiliasi sesi dan perubahan status tabungan dicatat di sini secara otomatis — ini yang ditampilkan sebagai bukti "governance layer" watsonx Orchestrate kepada juri.'
@@ -689,7 +748,7 @@ export default function DashboardPage() {
                   </thead>
                   <tbody className="divide-y divide-slate-100">
                     {auditLogs.map((log) => (
-                      <tr key={log.id} className="transition hover:bg-slate-50">
+                      <tr key={log.id} className="transition duration-200 hover:bg-slate-50">
                         <td className="px-4 py-2.5 tabular-nums text-slate-400">
                           {shortDate(log.createdAt)}
                         </td>
@@ -705,7 +764,7 @@ export default function DashboardPage() {
                     {auditLoading && (
                       <tr>
                         <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
-                          Memuat log…
+                          <span className="animate-pulse">Memuat log…</span>
                         </td>
                       </tr>
                     )}
@@ -728,7 +787,7 @@ export default function DashboardPage() {
               by merchantFilter). Sorted newest-first by parsing the "YYYY-MM"
               month string — no extra fetch needed. */}
           <div className="mt-8">
-            <SectionHeading icon="💰" title="Riwayat Tabungan Bulanan" />
+            <SectionHeading icon={<PiggyBank size={18} />} title="Riwayat Tabungan Bulanan" />
 
             <Panel>
               <div className="overflow-x-auto">
@@ -745,14 +804,17 @@ export default function DashboardPage() {
                     {[...savings]
                       .sort((a, b) => b.month.localeCompare(a.month))
                       .map((p) => (
-                        <tr key={p.id} className="transition hover:bg-slate-50">
+                        <tr key={p.id} className="transition duration-200 hover:bg-slate-50">
                           <td className="px-4 py-2.5 font-medium text-navy">{formatMonth(p.month)}</td>
-                          <td className="px-4 py-2.5 text-slate-500">{rupiah(p.netProfit)}</td>
-                          <td className="px-4 py-2.5 text-slate-500">{rupiah(p.suggestedAmount)}</td>
+                          <td className="px-4 py-2.5 tabular-nums text-slate-500">{rupiah(p.netProfit)}</td>
+                          <td className="px-4 py-2.5 tabular-nums text-slate-500">
+                            {rupiah(p.suggestedAmount)}
+                          </td>
                           <td className="px-4 py-2.5">
                             {p.status === "CONFIRMED" && (
-                              <span className="rounded-full bg-teal/10 px-2.5 py-1 text-xs font-semibold text-teal">
-                                Dikonfirmasi ✓
+                              <span className="inline-flex items-center gap-1 rounded-full bg-teal/10 px-2.5 py-1 text-xs font-semibold text-teal">
+                                <CheckCircle size={13} weight="bold" aria-hidden="true" />
+                                Dikonfirmasi
                               </span>
                             )}
                             {p.status === "DECLINED" && (
@@ -771,7 +833,7 @@ export default function DashboardPage() {
                     {savingsLoading && (
                       <tr>
                         <td colSpan={4} className="px-4 py-8 text-center text-slate-400">
-                          Memuat…
+                          <span className="animate-pulse">Memuat…</span>
                         </td>
                       </tr>
                     )}

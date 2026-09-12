@@ -1,8 +1,27 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import { IBM_Plex_Sans } from "next/font/google";
+import {
+  SignOut,
+  Storefront,
+  CreditCard,
+  Microphone,
+  WarningCircle,
+  Broadcast,
+  PiggyBank,
+  CheckCircle,
+} from "@phosphor-icons/react";
 import { extractFromAudio } from "@/lib/voiceToTransaction";
 import { getNeighborhoodPricing, type NeighborhoodPricing } from "@/lib/radarTetangga";
+
+// Scoped to this page only (same choice as /dashboard) — not applied globally
+// in layout.tsx.
+const ibmPlexSans = IBM_Plex_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
 
 // Seller-facing "Client Companion App" (PRD section 7, System Architecture).
 //
@@ -139,12 +158,15 @@ const toneClasses: Record<Tone, string> = {
 function IconCircle({ children, tone = "navy" }: { children: React.ReactNode; tone?: Tone }) {
   return (
     <span
-      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-base ${toneClasses[tone]}`}
+      aria-hidden="true"
+      className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-full ${toneClasses[tone]}`}
     >
       {children}
     </span>
   );
 }
+
+const ICON_SIZE = 16;
 
 export default function SessionPage() {
   const [merchantId, setMerchantId] = useState<string | null>(null);
@@ -476,7 +498,7 @@ export default function SessionPage() {
 
   // ── Render ────────────────────────────────────────────────────────────────
   return (
-    <div className="min-h-screen bg-[#F3F5FB]">
+    <div className={`min-h-screen bg-[#F3F5FB] ${ibmPlexSans.className}`}>
       <main className="mx-auto min-h-screen max-w-md px-4 pb-14 pt-5 sm:px-5">
         {/* ── Topbar (BankDash-style: icon-circle brand mark, title, avatar) ── */}
         <div className="mb-5 flex items-center justify-between rounded-2xl border border-slate-100 bg-white px-4 py-3 shadow-sm">
@@ -492,10 +514,10 @@ export default function SessionPage() {
           </div>
           <button
             onClick={handleLogout}
-            className="flex h-9 w-9 items-center justify-center rounded-full border border-slate-200 bg-white text-sm text-slate-500 shadow-sm transition hover:bg-slate-50 hover:text-navy"
+            className="flex h-9 w-9 cursor-pointer items-center justify-center rounded-full border border-slate-200 bg-white text-sm text-slate-500 shadow-sm transition duration-200 hover:bg-slate-50 hover:text-navy focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30"
             title="Keluar"
           >
-            🚪
+            <SignOut size={ICON_SIZE} aria-hidden="true" />
           </button>
         </div>
 
@@ -503,10 +525,10 @@ export default function SessionPage() {
           <button
             onClick={bukaLapak}
             disabled={loading || !merchantId}
-            className="group flex w-full items-center gap-4 rounded-2xl bg-gradient-to-br from-navy to-[#152A40] px-5 py-5 text-left shadow-lg shadow-navy/25 transition active:scale-[0.99] disabled:opacity-50"
+            className="group flex w-full cursor-pointer items-center gap-4 rounded-2xl bg-gradient-to-br from-navy to-[#152A40] px-5 py-5 text-left shadow-lg shadow-navy/25 transition duration-200 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/40"
           >
-            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10 text-2xl">
-              🏪
+            <span className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-white/10" aria-hidden="true">
+              <Storefront size={24} />
             </span>
             <span className="flex-1">
               <span className="block text-sm font-medium text-white/70">Langkah 1</span>
@@ -531,17 +553,17 @@ export default function SessionPage() {
               </div>
               <div className="mt-3 grid grid-cols-2 gap-3">
                 <div className="flex items-center gap-2.5 rounded-xl bg-slate-50 p-3">
-                  <IconCircle tone="teal">💳</IconCircle>
+                  <IconCircle tone="teal"><CreditCard size={ICON_SIZE} /></IconCircle>
                   <div className="min-w-0">
                     <p className="text-[11px] font-medium text-slate-400">QRIS</p>
-                    <p className="truncate text-base font-bold text-navy">{rupiah(session.qrisTotal)}</p>
+                    <p className="truncate text-base font-bold tabular-nums text-navy">{rupiah(session.qrisTotal)}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2.5 rounded-xl bg-slate-50 p-3">
-                  <IconCircle tone="navy">🎙</IconCircle>
+                  <IconCircle tone="navy"><Microphone size={ICON_SIZE} /></IconCircle>
                   <div className="min-w-0">
                     <p className="text-[11px] font-medium text-slate-400">Suara</p>
-                    <p className="truncate text-base font-bold text-navy">
+                    <p className="truncate text-base font-bold tabular-nums text-navy">
                       {rupiah(session.voiceCashEstimate)}
                     </p>
                   </div>
@@ -552,7 +574,7 @@ export default function SessionPage() {
             {/* ── Simulasi QRIS ── */}
             <SectionCard className="border-orange/20">
               <div className="flex items-start gap-2.5">
-                <IconCircle tone="orange">⚠️</IconCircle>
+                <IconCircle tone="orange"><WarningCircle size={ICON_SIZE} /></IconCircle>
                 <div className="pt-0.5">
                   <EyebrowLabel tone="orange">Simulasi — bukan koneksi QRIS asli</EyebrowLabel>
                   <p className="mt-1 text-xs text-slate-400">
@@ -565,11 +587,11 @@ export default function SessionPage() {
                   type="number"
                   value={qrisAmount}
                   onChange={(e) => setQrisAmount(e.target.value)}
-                  className="w-28 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium outline-none transition focus:border-navy/40 focus:ring-2 focus:ring-navy/10"
+                  className="w-28 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm font-medium tabular-nums outline-none transition duration-200 focus:border-navy/40 focus:ring-2 focus:ring-navy/10"
                 />
                 <button
                   onClick={simulateQris}
-                  className="flex-1 rounded-xl bg-teal px-3 py-2.5 text-sm font-semibold text-white shadow-sm shadow-teal/30 transition hover:bg-teal/90 active:scale-[0.99]"
+                  className="flex-1 cursor-pointer rounded-xl bg-teal px-3 py-2.5 text-sm font-semibold text-white shadow-sm shadow-teal/30 transition duration-200 hover:bg-teal/90 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/40"
                 >
                   Simulasikan Pembayaran QRIS
                 </button>
@@ -619,7 +641,7 @@ export default function SessionPage() {
                         {t.itemLabel && <span className="text-xs text-slate-300"> · {t.itemLabel}</span>}
                       </span>
                     </span>
-                    <span className="font-semibold text-navy">{rupiah(t.amount)}</span>
+                    <span className="font-semibold tabular-nums text-navy">{rupiah(t.amount)}</span>
                   </li>
                 ))}
                 {session.transactions.length === 0 && (
@@ -643,12 +665,12 @@ export default function SessionPage() {
                   placeholder="Total tunai yang dihitung"
                   value={closingTotal}
                   onChange={(e) => setClosingTotal(e.target.value)}
-                  className="w-full rounded-xl border-0 bg-white/95 px-3 py-2.5 text-sm outline-none ring-1 ring-white/10 focus:ring-2 focus:ring-white/40"
+                  className="w-full rounded-xl border-0 bg-white/95 px-3 py-2.5 text-sm tabular-nums outline-none ring-1 ring-white/10 transition duration-200 focus:ring-2 focus:ring-white/40"
                 />
                 <button
                   onClick={tutupBukuManual}
                   disabled={loading || !closingTotal}
-                  className="shrink-0 rounded-xl bg-orange px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-orange/90 active:scale-[0.99] disabled:opacity-50"
+                  className="shrink-0 cursor-pointer rounded-xl bg-orange px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition duration-200 hover:bg-orange/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-white/50"
                 >
                   Tutup
                 </button>
@@ -669,7 +691,11 @@ export default function SessionPage() {
             {/* Status title */}
             <div className="flex items-center gap-2.5">
               <IconCircle tone={result.status === "RECONCILED" ? "teal" : "red"}>
-                {result.status === "RECONCILED" ? "✅" : "⚠️"}
+                {result.status === "RECONCILED" ? (
+                  <CheckCircle size={ICON_SIZE} weight="bold" />
+                ) : (
+                  <WarningCircle size={ICON_SIZE} weight="bold" />
+                )}
               </IconCircle>
               <p
                 className={`font-bold ${
@@ -684,13 +710,13 @@ export default function SessionPage() {
             <div className="mt-3 flex flex-col gap-2 text-sm">
               <div className="flex items-baseline justify-between">
                 <span className="text-slate-400">Tutup buku (pedagang)</span>
-                <span className="font-semibold text-navy">
+                <span className="font-semibold tabular-nums text-navy">
                   {rupiah(result.closingReportTotal ?? 0)}
                 </span>
               </div>
               <div className="flex items-baseline justify-between">
                 <span className="text-slate-400">Estimasi kas dari suara</span>
-                <span className="font-semibold text-navy">{rupiah(result.voiceCashEstimate)}</span>
+                <span className="font-semibold tabular-nums text-navy">{rupiah(result.voiceCashEstimate)}</span>
               </div>
               <div className="flex items-baseline justify-between gap-3">
                 <span className="text-slate-400">
@@ -699,7 +725,7 @@ export default function SessionPage() {
                     — tidak dihitung dalam selisih, sudah terverifikasi otomatis
                   </span>
                 </span>
-                <span className="shrink-0 font-semibold text-navy">{rupiah(result.qrisTotal)}</span>
+                <span className="shrink-0 font-semibold tabular-nums text-navy">{rupiah(result.qrisTotal)}</span>
               </div>
             </div>
 
@@ -715,7 +741,7 @@ export default function SessionPage() {
                   <p className="text-xs text-slate-400">dihitung dari tutup buku vs. estimasi suara</p>
                 </div>
                 <span
-                  className={`text-xl font-bold ${
+                  className={`text-xl font-bold tabular-nums ${
                     result.status === "RECONCILED" ? "text-teal" : "text-red-600"
                   }`}
                 >
@@ -756,7 +782,7 @@ function VoicePanel({
   return (
     <SectionCard>
       <div className="flex items-start gap-2.5">
-        <IconCircle tone="navy">🎙</IconCircle>
+        <IconCircle tone="navy"><Microphone size={ICON_SIZE} /></IconCircle>
         <div className="pt-0.5">
           <EyebrowLabel>Langkah 2 · Rekam Harga / Tutup Buku</EyebrowLabel>
           <p className="mt-1 text-xs text-slate-400">
@@ -774,15 +800,17 @@ function VoicePanel({
           <button
             onClick={onStart}
             disabled={busy}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-navy px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-navy/20 transition hover:bg-navy/90 active:scale-[0.99] disabled:opacity-50"
+            className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-navy px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-navy/20 transition duration-200 hover:bg-navy/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/40"
           >
-            <span className="text-base">🎙</span>
-            {isRequesting ? "Meminta izin mikrofon…" : isProcessing ? "Memproses…" : "Rekam"}
+            <Microphone size={18} aria-hidden="true" />
+            <span className={busy ? "animate-pulse" : ""}>
+              {isRequesting ? "Meminta izin mikrofon…" : isProcessing ? "Memproses…" : "Rekam"}
+            </span>
           </button>
         ) : (
           <button
             onClick={onStop}
-            className="flex w-full items-center justify-center gap-2 rounded-xl bg-red-500 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-red-500/30 transition active:scale-[0.99]"
+            className="flex w-full cursor-pointer items-center justify-center gap-2 rounded-xl bg-red-500 px-4 py-3 text-sm font-semibold text-white shadow-sm shadow-red-500/30 transition duration-200 active:scale-[0.99] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-red-500/40"
           >
             <span className="relative flex h-2.5 w-2.5">
               <span className="absolute inline-flex h-full w-full animate-ping rounded-full bg-white/70" />
@@ -833,7 +861,7 @@ function RadarTetanggaPanel({
   return (
     <SectionCard>
       <div className="flex items-start gap-2.5">
-        <IconCircle tone="teal">📡</IconCircle>
+        <IconCircle tone="teal"><Broadcast size={ICON_SIZE} /></IconCircle>
         <div className="pt-0.5">
           <EyebrowLabel>Radar Tetangga</EyebrowLabel>
           <p className="mt-1 text-xs text-slate-400">
@@ -849,15 +877,15 @@ function RadarTetanggaPanel({
           value={query}
           onChange={(e) => onQueryChange(e.target.value)}
           onKeyDown={(e) => e.key === "Enter" && onQuery(query)}
-          className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition focus:border-navy/40 focus:ring-2 focus:ring-navy/10"
+          className="flex-1 rounded-xl border border-slate-200 bg-white px-3 py-2.5 text-sm outline-none transition duration-200 focus:border-navy/40 focus:ring-2 focus:ring-navy/10"
           disabled={status === "loading"}
         />
         <button
           onClick={() => onQuery(query)}
           disabled={!query.trim() || status === "loading"}
-          className="rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition hover:bg-navy/90 disabled:opacity-50"
+          className="cursor-pointer rounded-xl bg-navy px-4 py-2.5 text-sm font-semibold text-white shadow-sm transition duration-200 hover:bg-navy/90 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/40"
         >
-          {status === "loading" ? "…" : "Cek"}
+          {status === "loading" ? <span className="animate-pulse">…</span> : "Cek"}
         </button>
       </div>
 
@@ -872,13 +900,13 @@ function RadarTetanggaPanel({
       )}
 
       {status === "loading" && (
-        <p className="mt-3 text-xs text-slate-400">Mencari data sekitar…</p>
+        <p className="mt-3 animate-pulse text-xs text-slate-400">Mencari data sekitar…</p>
       )}
 
       {status === "ready" && result && (
         <div className="mt-3 rounded-xl bg-slate-50 px-3.5 py-3">
           <p className="text-sm font-semibold text-navy">{result.itemLabel}</p>
-          <p className="mt-0.5 text-xl font-bold text-navy">{rupiah(result.averagePrice)}</p>
+          <p className="mt-0.5 text-xl font-bold tabular-nums text-navy">{rupiah(result.averagePrice)}</p>
           <p className="mt-0.5 text-xs text-slate-400">
             rata-rata dari {result.sampleSize} pedagang sekitar
             {result.radius ? ` (radius ${result.radius})` : ""}
@@ -921,7 +949,7 @@ function SavingsPanel({ proposal, loading, onConfirm, onDecline }: SavingsPanelP
   return (
     <SectionCard className="border-teal/25">
       <div className="flex items-start gap-2.5">
-        <IconCircle tone="teal">💰</IconCircle>
+        <IconCircle tone="teal"><PiggyBank size={ICON_SIZE} /></IconCircle>
         <div className="pt-0.5">
           <EyebrowLabel tone="teal">Saran Tabungan Bulan Ini</EyebrowLabel>
           <p className="mt-1 text-xs text-slate-400">
@@ -935,11 +963,11 @@ function SavingsPanel({ proposal, loading, onConfirm, onDecline }: SavingsPanelP
       <div className="mt-3 rounded-xl bg-slate-50 px-3.5 py-3">
         <div className="flex justify-between text-sm">
           <span className="text-slate-400">Omzet tercatat</span>
-          <span className="font-semibold text-navy">{rupiah(proposal.netProfit)}</span>
+          <span className="font-semibold tabular-nums text-navy">{rupiah(proposal.netProfit)}</span>
         </div>
         <div className="mt-1.5 flex justify-between text-sm">
           <span className="text-slate-400">Saran tabungan (10%)</span>
-          <span className="font-bold text-teal">{rupiah(proposal.suggestedAmount)}</span>
+          <span className="font-bold tabular-nums text-teal">{rupiah(proposal.suggestedAmount)}</span>
         </div>
       </div>
 
@@ -952,16 +980,22 @@ function SavingsPanel({ proposal, loading, onConfirm, onDecline }: SavingsPanelP
         <button
           onClick={onConfirm}
           disabled={loading}
-          className="flex-1 rounded-xl bg-teal px-3 py-2.5 text-sm font-semibold text-white shadow-sm shadow-teal/30 transition hover:bg-teal/90 active:scale-[0.99] disabled:opacity-50"
+          className="flex flex-1 cursor-pointer items-center justify-center gap-1.5 rounded-xl bg-teal px-3 py-2.5 text-sm font-semibold text-white shadow-sm shadow-teal/30 transition duration-200 hover:bg-teal/90 active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-teal/40"
         >
-          {loading ? "…" : "✓ Setuju"}
+          {loading ? (
+            <span className="animate-pulse">…</span>
+          ) : (
+            <>
+              <CheckCircle size={14} weight="bold" aria-hidden="true" /> Setuju
+            </>
+          )}
         </button>
         <button
           onClick={onDecline}
           disabled={loading}
-          className="flex-1 rounded-xl border border-navy/20 bg-white px-3 py-2.5 text-sm font-semibold text-navy transition hover:bg-navy/5 disabled:opacity-50"
+          className="flex-1 cursor-pointer rounded-xl border border-navy/20 bg-white px-3 py-2.5 text-sm font-semibold text-navy transition duration-200 hover:bg-navy/5 disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-navy/30"
         >
-          {loading ? "…" : "Tolak"}
+          {loading ? <span className="animate-pulse">…</span> : "Tolak"}
         </button>
       </div>
     </SectionCard>
