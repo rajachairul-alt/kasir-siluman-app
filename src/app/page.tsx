@@ -144,10 +144,6 @@ export default function Home() {
             </Link>
           </TiltCard>
         </div>
-
-        <p className="mt-12 text-center text-xs text-[#8C8375]">
-          MVP hackathon — data QRIS &amp; suara masih disimulasikan, lihat README.md
-        </p>
       </div>
     </main>
   );
