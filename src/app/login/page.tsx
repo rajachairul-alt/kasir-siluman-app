@@ -2,6 +2,17 @@
 
 import { Suspense, useEffect, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
+import { IBM_Plex_Sans } from "next/font/google";
+import { Storefront } from "@phosphor-icons/react";
+import TiltCard from "@/components/TiltCard";
+
+// Scoped to this page only (same choice as the other pages) — not applied
+// globally in layout.tsx.
+const ibmPlexSans = IBM_Plex_Sans({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  display: "swap",
+});
 
 interface Merchant {
   id: string;
@@ -66,67 +77,85 @@ function LoginForm() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-[#FBF6EE] to-[#F3E9D8] px-4">
-      <div className="w-full max-w-sm">
+    <div
+      className={`relative flex min-h-screen items-center justify-center overflow-hidden bg-gradient-to-b from-[#FBF6EE] to-[#F3E9D8] px-4 ${ibmPlexSans.className}`}
+    >
+      {/* Ambient gradient orbs — pure CSS, no 3D library */}
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -left-20 -top-20 h-64 w-64 animate-ks-float-slow rounded-full bg-navy/15 blur-3xl"
+      />
+      <div
+        aria-hidden="true"
+        className="pointer-events-none absolute -right-16 bottom-0 h-72 w-72 animate-ks-float rounded-full bg-orange/10 blur-3xl"
+      />
+
+      <div className="relative w-full max-w-sm">
         <div className="text-center mb-8">
-          {/* eslint-disable-next-line @next/next/no-img-element */}
-          <img
-            src="/logo.png"
-            alt="Kasir Siluman"
-            className="mx-auto mb-4 h-14 w-14 rounded-2xl shadow-lg shadow-[#191970]/20"
-          />
+          <TiltCard max={10} className="mx-auto mb-4 inline-block">
+            {/* eslint-disable-next-line @next/next/no-img-element */}
+            <img
+              src="/logo.png"
+              alt="Kasir Siluman"
+              className="mx-auto h-14 w-14 rounded-2xl shadow-lg shadow-[#191970]/20"
+            />
+          </TiltCard>
           <h1 className="text-2xl font-bold text-[#1F3A56]">Kasir Siluman</h1>
-          <p className="mt-1 text-sm text-[#6B6357]">Masuk sebagai pedagang untuk mulai berjualan</p>
+          <p className="mt-1 flex items-center justify-center gap-1.5 text-sm text-[#6B6357]">
+            <Storefront size={15} aria-hidden="true" /> Masuk sebagai pedagang untuk mulai berjualan
+          </p>
         </div>
 
-        <form
-          onSubmit={handleSubmit}
-          className="rounded-2xl border border-black/5 bg-white/80 backdrop-blur p-6 shadow-xl shadow-black/5"
-        >
-          <label className="block text-xs font-semibold uppercase tracking-wide text-[#6B6357] mb-1.5">
-            Pilih lapak
-          </label>
-          <select
-            value={merchantId}
-            onChange={(e) => setMerchantId(e.target.value)}
-            className="w-full rounded-xl border border-black/10 bg-white px-3.5 py-2.5 text-sm text-[#231F1A] outline-none transition focus:border-[#1F3A56] focus:ring-2 focus:ring-[#1F3A56]/15"
+        <TiltCard max={3}>
+          <form
+            onSubmit={handleSubmit}
+            className="rounded-2xl border border-black/5 bg-white/80 backdrop-blur p-6 shadow-xl shadow-black/5"
           >
-            {merchants.length === 0 && <option>Memuat…</option>}
-            {merchants.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
-              </option>
-            ))}
-          </select>
+            <label className="block text-xs font-semibold uppercase tracking-wide text-[#6B6357] mb-1.5">
+              Pilih lapak
+            </label>
+            <select
+              value={merchantId}
+              onChange={(e) => setMerchantId(e.target.value)}
+              className="w-full cursor-pointer rounded-xl border border-black/10 bg-white px-3.5 py-2.5 text-sm text-[#231F1A] outline-none transition duration-200 focus:border-[#1F3A56] focus:ring-2 focus:ring-[#1F3A56]/15 focus-visible:outline-none"
+            >
+              {merchants.length === 0 && <option>Memuat…</option>}
+              {merchants.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
 
-          <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-[#6B6357] mb-1.5">
-            PIN
-          </label>
-          <input
-            type="password"
-            inputMode="numeric"
-            autoFocus
-            value={pin}
-            onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
-            placeholder="••••"
-            maxLength={6}
-            className="w-full rounded-xl border border-black/10 bg-white px-3.5 py-2.5 text-center text-lg tracking-[0.5em] text-[#231F1A] outline-none transition focus:border-[#1F3A56] focus:ring-2 focus:ring-[#1F3A56]/15"
-          />
+            <label className="mt-4 block text-xs font-semibold uppercase tracking-wide text-[#6B6357] mb-1.5">
+              PIN
+            </label>
+            <input
+              type="password"
+              inputMode="numeric"
+              autoFocus
+              value={pin}
+              onChange={(e) => setPin(e.target.value.replace(/\D/g, ""))}
+              placeholder="••••"
+              maxLength={6}
+              className="w-full rounded-xl border border-black/10 bg-white px-3.5 py-2.5 text-center text-lg tracking-[0.5em] text-[#231F1A] outline-none transition duration-200 focus:border-[#1F3A56] focus:ring-2 focus:ring-[#1F3A56]/15"
+            />
 
-          {error && (
-            <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
-              {error}
-            </p>
-          )}
+            {error && (
+              <p className="mt-3 rounded-lg bg-red-50 px-3 py-2 text-xs font-medium text-red-700">
+                {error}
+              </p>
+            )}
 
-          <button
-            type="submit"
-            disabled={loading || !merchantId || pin.length === 0}
-            className="mt-5 w-full rounded-xl bg-[#1F3A56] py-3 text-sm font-semibold text-white shadow-md shadow-[#1F3A56]/25 transition hover:bg-[#16283d] disabled:cursor-not-allowed disabled:opacity-50"
-          >
-            {loading ? "Memeriksa…" : "Masuk"}
-          </button>
-        </form>
+            <button
+              type="submit"
+              disabled={loading || !merchantId || pin.length === 0}
+              className="mt-5 w-full cursor-pointer rounded-xl bg-[#1F3A56] py-3 text-sm font-semibold text-white shadow-md shadow-[#1F3A56]/25 transition duration-200 hover:bg-[#16283d] active:scale-[0.99] disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#1F3A56]/40"
+            >
+              <span className={loading ? "animate-pulse" : ""}>{loading ? "Memeriksa…" : "Masuk"}</span>
+            </button>
+          </form>
+        </TiltCard>
 
         <p className="mt-6 text-center text-xs text-[#8C8375]">
           Pemilik lapak?{" "}

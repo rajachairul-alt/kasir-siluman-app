@@ -1,3 +1,25 @@
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
+
+/* Slow ambient drift for the blurred gradient orbs on the landing/login
+   pages — pure CSS, no animation library. Respects reduced-motion. */
+@layer utilities {
+  @keyframes ks-float {
+    0%, 100% { transform: translate3d(0, 0, 0); }
+    50% { transform: translate3d(0, -24px, 0); }
+  }
+  .animate-ks-float {
+    animation: ks-float 7s ease-in-out infinite;
+  }
+  .animate-ks-float-slow {
+    animation: ks-float 11s ease-in-out infinite;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-ks-float,
+  .animate-ks-float-slow {
+    animation: none;
+  }
+}
