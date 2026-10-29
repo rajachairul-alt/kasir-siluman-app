@@ -731,7 +731,7 @@ export default function DashboardPage() {
               icon={<Shield size={18} />}
               title="Log Keputusan Agent"
               subtitle={
-                'Setiap rekonsiliasi sesi dan perubahan status tabungan dicatat di sini secara otomatis — ini yang ditampilkan sebagai bukti "governance layer" watsonx Orchestrate kepada juri.'
+                'Setiap rekonsiliasi sesi dan perubahan status tabungan dicatat otomatis oleh aplikasi (append-only). Agen watsonx Orchestrate membaca log ini lewat endpoint audit.'
               }
             />
 

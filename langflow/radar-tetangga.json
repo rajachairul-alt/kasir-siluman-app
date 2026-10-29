@@ -1,0 +1,185 @@
+{
+  "name": "Kasir Siluman - Radar Tetangga",
+  "description": "Agregasi harga anonim antar pedagang untuk item tertentu (deterministik, bukan LLM).",
+  "icon": null,
+  "icon_bg_color": null,
+  "gradient": null,
+  "data": {
+    "nodes": [
+      {
+        "id": "CustomComponent-RadarAgg1",
+        "type": "genericNode",
+        "position": {
+          "x": 300,
+          "y": 200
+        },
+        "data": {
+          "node": {
+            "template": {
+              "_type": "Component",
+              "item_label": {
+                "tool_mode": false,
+                "trace_as_input": true,
+                "trace_as_metadata": true,
+                "load_from_db": false,
+                "list": false,
+                "list_add_label": "Add More",
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "item_label",
+                "value": "bakso",
+                "display_name": "Item Label",
+                "advanced": false,
+                "input_types": [
+                  "Message"
+                ],
+                "dynamic": false,
+                "info": "Nama barang yang dicari, mis. 'bakso'.",
+                "title_case": false,
+                "type": "str",
+                "_input_type": "MessageTextInput"
+              },
+              "app_base_url": {
+                "tool_mode": false,
+                "trace_as_input": true,
+                "trace_as_metadata": true,
+                "load_from_db": false,
+                "list": false,
+                "list_add_label": "Add More",
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "app_base_url",
+                "value": "http://localhost:3000",
+                "display_name": "App Base URL",
+                "advanced": false,
+                "input_types": [
+                  "Message"
+                ],
+                "dynamic": false,
+                "info": "Base URL Next.js app, mis. http://localhost:3000.",
+                "title_case": false,
+                "type": "str",
+                "_input_type": "MessageTextInput"
+              },
+              "internal_secret": {
+                "load_from_db": true,
+                "override_skip": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "internal_secret",
+                "value": "RADAR_INTERNAL_SECRET",
+                "display_name": "Internal Secret",
+                "advanced": false,
+                "api_editable": false,
+                "input_types": [],
+                "dynamic": false,
+                "info": "Dicocokkan dengan RADAR_INTERNAL_SECRET di app Next.js.",
+                "title_case": false,
+                "track_in_telemetry": false,
+                "password": true,
+                "type": "str",
+                "_input_type": "SecretStrInput"
+              },
+              "code": {
+                "type": "code",
+                "required": true,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "multiline": true,
+                "value": "import json\nimport requests\nfrom lfx.custom.custom_component.component import Component\nfrom lfx.io import MessageTextInput, SecretStrInput, Output\nfrom lfx.schema.message import Message\n\n\nclass CustomComponent(Component):\n    display_name = \"Radar Tetangga Aggregator\"\n    description = (\n        \"Menghitung rata-rata harga barang lintas pedagang secara deterministik \"\n        \"(bukan LLM) dari data /api/internal/item-prices, dan menyembunyikan \"\n        \"hasil kalau sampel < 2 pedagang.\"\n    )\n    icon = \"code\"\n    name = \"CustomComponent\"\n\n    inputs = [\n        MessageTextInput(\n            name=\"item_label\",\n            display_name=\"Item Label\",\n            info=\"Nama barang yang dicari, mis. 'bakso'.\",\n        ),\n        MessageTextInput(\n            name=\"app_base_url\",\n            display_name=\"App Base URL\",\n            info=\"Base URL Next.js app, mis. http://localhost:3000.\",\n            value=\"http://localhost:3000\",\n        ),\n        SecretStrInput(\n            name=\"internal_secret\",\n            display_name=\"Internal Secret\",\n            info=\"Dicocokkan dengan RADAR_INTERNAL_SECRET di app Next.js.\",\n        ),\n    ]\n\n    outputs = [\n        Output(display_name=\"Neighborhood Pricing\", name=\"pricing\", method=\"aggregate\"),\n    ]\n\n    def aggregate(self) -> Message:\n        item_label = (self.item_label or \"\").strip()\n        if not item_label:\n            result = {\"itemLabel\": item_label, \"averagePrice\": None, \"sampleSize\": 0}\n            self.status = json.dumps(result, ensure_ascii=False)\n            return Message(text=json.dumps(result, ensure_ascii=False))\n\n        base_url = (self.app_base_url or \"http://localhost:3000\").rstrip(\"/\")\n        url = f\"{base_url}/api/internal/item-prices\"\n        headers = {\"x-radar-internal-secret\": self.internal_secret}\n        params = {\"itemLabel\": item_label}\n\n        response = requests.get(url, headers=headers, params=params, timeout=15)\n        response.raise_for_status()\n        data = response.json()\n        amounts = data.get(\"amounts\", [])\n\n        # Deterministic arithmetic â never let an LLM compute this average.\n        # A wrong average is worse than no average, since this feature's\n        # entire value proposition is trust (see Langflow-Pipeline-Specs.md).\n        sample_size = len(amounts)\n        if sample_size < 2:\n            # Suppress: fewer than 2 contributing merchants would make the\n            # \"average\" identifiable as a single merchant's price.\n            result = {\"itemLabel\": item_label, \"averagePrice\": None, \"sampleSize\": sample_size}\n        else:\n            average_price = round(sum(amounts) / sample_size)\n            result = {\"itemLabel\": item_label, \"averagePrice\": average_price, \"sampleSize\": sample_size}\n\n        self.status = json.dumps(result, ensure_ascii=False)\n        return Message(text=json.dumps(result, ensure_ascii=False))\n",
+                "fileTypes": [],
+                "file_path": "",
+                "password": false,
+                "name": "code",
+                "advanced": true,
+                "api_editable": false,
+                "dynamic": true,
+                "info": "",
+                "load_from_db": false,
+                "title_case": false
+              }
+            },
+            "description": "Menghitung rata-rata harga barang lintas pedagang secara deterministik (bukan LLM), dan menyembunyikan hasil kalau sampel < 2 pedagang.",
+            "icon": "code",
+            "base_classes": [
+              "Message"
+            ],
+            "display_name": "Radar Tetangga Aggregator",
+            "documentation": "",
+            "minimized": false,
+            "custom_fields": {},
+            "output_types": [],
+            "pinned": false,
+            "conditional_paths": [],
+            "frozen": false,
+            "outputs": [
+              {
+                "types": [
+                  "Message"
+                ],
+                "selected": "Message",
+                "name": "pricing",
+                "hidden": null,
+                "display_name": "Neighborhood Pricing",
+                "method": "aggregate",
+                "value": "__UNDEFINED__",
+                "cache": true,
+                "required_inputs": null,
+                "allows_loop": false,
+                "loop_types": null,
+                "group_outputs": false,
+                "options": null,
+                "tool_mode": true
+              }
+            ],
+            "field_order": [
+              "item_label",
+              "app_base_url",
+              "internal_secret"
+            ],
+            "beta": false,
+            "legacy": false,
+            "edited": true,
+            "metadata": {},
+            "tool_mode": false,
+            "lf_version": "1.11.6"
+          },
+          "showNode": true,
+          "type": "CustomComponent",
+          "id": "CustomComponent-RadarAgg1"
+        },
+        "selected": false,
+        "dragging": false,
+        "measured": {
+          "width": 320,
+          "height": 350
+        }
+      }
+    ],
+    "edges": [],
+    "viewport": {
+      "x": 0,
+      "y": 0,
+      "zoom": 1
+    }
+  },
+  "is_component": false,
+  "updated_at": "2026-09-06T14:34:08+00:00",
+  "webhook": false,
+  "endpoint_name": null,
+  "tags": null,
+  "locked": false,
+  "mcp_enabled": false,
+  "action_name": null,
+  "action_description": null,
+  "access_type": "PRIVATE",
+  "flow_type": "workflow",
+  "a2a_enabled": false,
+  "a2a_card_overrides": null,
+  "id": "1b7fa2b9-cc76-4228-a7a3-fa6c05210cbd",
+  "name_key": null
+}

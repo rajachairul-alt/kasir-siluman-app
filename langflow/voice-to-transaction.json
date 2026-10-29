@@ -1,0 +1,1217 @@
+{
+  "name": "Kasir Siluman - Voice to Transaction",
+  "description": "Voice-to-Transaction pipeline: audio in -> speech-to-text -> extract price/item/closing-report intent -> structured JSON matching VoiceExtractionResult (amount, itemLabel, confidence, isClosingReport). BOB_BRIEF.md item #2.",
+  "icon": null,
+  "icon_bg_color": null,
+  "gradient": null,
+  "data": {
+    "nodes": [
+      {
+        "id": "ext:ibm:WatsonxAIComponent@official-zEZIO",
+        "type": "genericNode",
+        "position": {
+          "x": 498.16662231445315,
+          "y": 109.12065994262697
+        },
+        "data": {
+          "node": {
+            "template": {
+              "_type": "Component",
+              "api_key": {
+                "load_from_db": false,
+                "override_skip": false,
+                "required": true,
+                "placeholder": "",
+                "show": true,
+                "name": "api_key",
+                "value": "",
+                "display_name": "Watsonx API Key",
+                "advanced": false,
+                "api_editable": false,
+                "input_types": [],
+                "dynamic": false,
+                "info": "The API Key to use for the model.",
+                "title_case": false,
+                "track_in_telemetry": false,
+                "password": true,
+                "type": "str",
+                "_input_type": "SecretStrInput"
+              },
+              "base_url": {
+                "tool_mode": false,
+                "trace_as_metadata": true,
+                "options": [
+                  "https://us-south.ml.cloud.ibm.com",
+                  "https://eu-de.ml.cloud.ibm.com",
+                  "https://eu-gb.ml.cloud.ibm.com",
+                  "https://au-syd.ml.cloud.ibm.com",
+                  "https://jp-tok.ml.cloud.ibm.com",
+                  "https://ca-tor.ml.cloud.ibm.com",
+                  "https://ap-south-1.aws.wxai.ibm.com"
+                ],
+                "options_metadata": [],
+                "combobox": false,
+                "dialog_inputs": {},
+                "toggle": false,
+                "override_skip": false,
+                "required": true,
+                "placeholder": "",
+                "show": true,
+                "name": "base_url",
+                "value": "https://us-south.ml.cloud.ibm.com",
+                "display_name": "watsonx API Endpoint",
+                "advanced": false,
+                "api_editable": false,
+                "dynamic": false,
+                "info": "The base URL of the API.",
+                "real_time_refresh": true,
+                "title_case": false,
+                "track_in_telemetry": true,
+                "external_options": {},
+                "type": "str",
+                "_input_type": "DropdownInput"
+              },
+              "code": {
+                "type": "code",
+                "required": true,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "multiline": true,
+                "value": "import json\nfrom typing import Any\n\nfrom langchain_ibm import ChatWatsonx\nfrom lfx.base.models.model import LCModelComponent\nfrom lfx.base.models.model_utils import get_watsonx_llm_models\nfrom lfx.field_typing import LanguageModel\nfrom lfx.field_typing.range_spec import RangeSpec\nfrom lfx.inputs.inputs import BoolInput, DropdownInput, IntInput, SecretStrInput, SliderInput, StrInput\nfrom lfx.io import Output\nfrom lfx.log.logger import logger\nfrom lfx.schema.dotdict import dotdict\nfrom lfx.utils.secrets import secret_value_to_str\n\n\nclass WatsonxAIComponent(LCModelComponent):\n    \"\"\"LFX component for IBM watsonx.ai text/chat generation.\"\"\"\n\n    display_name = \"IBM watsonx.ai\"\n    description = \"Generate text using IBM watsonx.ai foundation models.\"\n    icon = \"WatsonxAI\"\n    name = \"IBMwatsonxModel\"\n    beta = False\n\n    _default_models = [\"ibm/granite-3-2b-instruct\", \"ibm/granite-3-8b-instruct\", \"ibm/granite-13b-instruct-v2\"]\n    _urls = [\n        \"https://us-south.ml.cloud.ibm.com\",\n        \"https://eu-de.ml.cloud.ibm.com\",\n        \"https://eu-gb.ml.cloud.ibm.com\",\n        \"https://au-syd.ml.cloud.ibm.com\",\n        \"https://jp-tok.ml.cloud.ibm.com\",\n        \"https://ca-tor.ml.cloud.ibm.com\",\n        \"https://ap-south-1.aws.wxai.ibm.com\",\n    ]\n    inputs = [\n        *LCModelComponent.get_base_inputs(),\n        DropdownInput(\n            name=\"base_url\",\n            display_name=\"watsonx API Endpoint\",\n            info=\"The base URL of the API.\",\n            value=[],\n            options=_urls,\n            real_time_refresh=True,\n            required=True,\n        ),\n        StrInput(\n            name=\"project_id\",\n            display_name=\"watsonx Project_ID\",\n            required=False,\n            info=\"The project ID associated with the foundation model.\",\n        ),\n        StrInput(\n            name=\"space_id\",\n            display_name=\"watsonx Space_ID\",\n            required=False,\n            info=\"The deployment space ID associated with the foundation model.\",\n        ),\n        SecretStrInput(\n            name=\"api_key\",\n            display_name=\"Watsonx API Key\",\n            info=\"The API Key to use for the model.\",\n            required=True,\n        ),\n        DropdownInput(\n            name=\"model_name\",\n            display_name=\"Model Name\",\n            options=[],\n            value=None,\n            real_time_refresh=True,\n            required=True,\n            refresh_button=True,\n        ),\n        IntInput(\n            name=\"max_tokens\",\n            display_name=\"Max Tokens\",\n            advanced=True,\n            info=\"The maximum number of tokens to generate.\",\n            range_spec=RangeSpec(min=1, max=4096),\n            value=1000,\n        ),\n        StrInput(\n            name=\"stop_sequence\",\n            display_name=\"Stop Sequence\",\n            advanced=True,\n            info=\"Sequence where generation should stop.\",\n            field_type=\"str\",\n        ),\n        SliderInput(\n            name=\"temperature\",\n            display_name=\"Temperature\",\n            info=\"Controls randomness, higher values increase diversity.\",\n            value=0.1,\n            range_spec=RangeSpec(min=0, max=2, step=0.01),\n            advanced=True,\n        ),\n        SliderInput(\n            name=\"top_p\",\n            display_name=\"Top P\",\n            info=\"The cumulative probability cutoff for token selection. \"\n            \"Lower values mean sampling from a smaller, more top-weighted nucleus.\",\n            value=0.9,\n            range_spec=RangeSpec(min=0, max=1, step=0.01),\n            advanced=True,\n        ),\n        SliderInput(\n            name=\"frequency_penalty\",\n            display_name=\"Frequency Penalty\",\n            info=\"Penalty for frequency of token usage.\",\n            value=0.5,\n            range_spec=RangeSpec(min=-2.0, max=2.0, step=0.01),\n            advanced=True,\n        ),\n        SliderInput(\n            name=\"presence_penalty\",\n            display_name=\"Presence Penalty\",\n            info=\"Penalty for token presence in prior text.\",\n            value=0.3,\n            range_spec=RangeSpec(min=-2.0, max=2.0, step=0.01),\n            advanced=True,\n        ),\n        IntInput(\n            name=\"seed\",\n            display_name=\"Random Seed\",\n            advanced=True,\n            info=\"The random seed for the model.\",\n            value=8,\n        ),\n        BoolInput(\n            name=\"logprobs\",\n            display_name=\"Log Probabilities\",\n            advanced=True,\n            info=\"Whether to return log probabilities of the output tokens.\",\n            value=True,\n        ),\n        IntInput(\n            name=\"top_logprobs\",\n            display_name=\"Top Log Probabilities\",\n            advanced=True,\n            info=\"Number of most likely tokens to return at each position.\",\n            value=3,\n            range_spec=RangeSpec(min=1, max=20),\n        ),\n        StrInput(\n            name=\"logit_bias\",\n            display_name=\"Logit Bias\",\n            advanced=True,\n            info='JSON string of token IDs to bias or suppress (e.g., {\"1003\": -100, \"1004\": 100}).',\n            field_type=\"str\",\n        ),\n    ]\n\n    # Explicit re-declaration mirrors LCModelComponent.outputs so the\n    # bundle's static AST validator (``lfx extension validate``) detects\n    # the entry-point methods without having to resolve the MRO.\n    outputs = [\n        Output(display_name=\"Model Response\", name=\"text_output\", method=\"text_response\"),\n        Output(display_name=\"Language Model\", name=\"model_output\", method=\"build_model\"),\n    ]\n\n    @staticmethod\n    def fetch_models(base_url: str) -> list[str]:\n        \"\"\"Fetch available models from the watsonx.ai API.\n\n        Uses centralized model fetching from model_utils.\n        \"\"\"\n        return get_watsonx_llm_models(base_url, default_models=WatsonxAIComponent._default_models)\n\n    def update_build_config(self, build_config: dotdict, field_value: Any, field_name: str | None = None):\n        \"\"\"Update model options when URL or API key changes.\"\"\"\n        if field_name == \"base_url\" and field_value:\n            try:\n                models = self.fetch_models(base_url=field_value)\n                build_config[\"model_name\"][\"options\"] = models\n                if build_config[\"model_name\"].get(\"value\") not in models:\n                    build_config[\"model_name\"][\"value\"] = models[0] if models else None\n                info_message = f\"Updated model options: {len(models)} models found in {field_value}\"\n                logger.info(info_message)\n            except Exception:  # noqa: BLE001\n                logger.exception(\"Error updating model options.\")\n\n        return build_config\n\n    def build_model(self) -> LanguageModel:\n        # Parse logit_bias from JSON string if provided\n        logit_bias = None\n        if hasattr(self, \"logit_bias\") and self.logit_bias:\n            try:\n                logit_bias = json.loads(self.logit_bias)\n            except json.JSONDecodeError:\n                logger.warning(\"Invalid logit_bias JSON format. Using default instead.\")\n                logit_bias = {\"1003\": -100, \"1004\": -100}\n\n        chat_params = {\n            \"max_tokens\": getattr(self, \"max_tokens\", None),\n            \"temperature\": getattr(self, \"temperature\", None),\n            \"top_p\": getattr(self, \"top_p\", None),\n            \"frequency_penalty\": getattr(self, \"frequency_penalty\", None),\n            \"presence_penalty\": getattr(self, \"presence_penalty\", None),\n            \"seed\": getattr(self, \"seed\", None),\n            \"stop\": [self.stop_sequence] if self.stop_sequence else [],\n            \"n\": 1,\n            \"logprobs\": getattr(self, \"logprobs\", True),\n            \"top_logprobs\": getattr(self, \"top_logprobs\", None),\n            \"time_limit\": 600000,\n            \"logit_bias\": logit_bias,\n        }\n\n        # Pass API key as plain string to avoid SecretStr serialization issues\n        # when model is configured with with_config() or used in batch operations.\n        api_key_value = secret_value_to_str(self.api_key)\n\n        if bool(self.space_id) == bool(self.project_id):\n            msg = \"Exactly one of Project_ID or Space_ID must be selected\"\n            raise ValueError(msg)\n\n        return ChatWatsonx(\n            apikey=api_key_value,\n            url=self.base_url,\n            project_id=self.project_id,\n            space_id=self.space_id,\n            model_id=self.model_name,\n            params=chat_params,\n            streaming=self.stream,\n        )\n",
+                "fileTypes": [],
+                "file_path": "",
+                "password": false,
+                "name": "code",
+                "advanced": true,
+                "api_editable": false,
+                "dynamic": true,
+                "info": "",
+                "load_from_db": false,
+                "title_case": false
+              },
+              "frequency_penalty": {
+                "tool_mode": false,
+                "min_label": "",
+                "max_label": "",
+                "min_label_icon": "",
+                "max_label_icon": "",
+                "slider_buttons": false,
+                "slider_buttons_options": [],
+                "slider_input": false,
+                "range_spec": {
+                  "step_type": "float",
+                  "min": -2,
+                  "max": 2,
+                  "step": 0.01
+                },
+                "override_skip": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "frequency_penalty",
+                "value": 0.5,
+                "display_name": "Frequency Penalty",
+                "advanced": true,
+                "api_editable": false,
+                "dynamic": false,
+                "info": "Penalty for frequency of token usage.",
+                "title_case": false,
+                "track_in_telemetry": false,
+                "type": "slider",
+                "_input_type": "SliderInput"
+              },
+              "input_value": {
+                "trace_as_input": true,
+                "tool_mode": false,
+                "trace_as_metadata": true,
+                "load_from_db": false,
+                "list": false,
+                "list_add_label": "Add More",
+                "override_skip": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "input_value",
+                "value": "",
+                "display_name": "Input",
+                "advanced": false,
+                "api_editable": false,
+                "input_types": [
+                  "Message"
+                ],
+                "dynamic": false,
+                "info": "",
+                "title_case": false,
+                "track_in_telemetry": false,
+                "type": "str",
+                "_input_type": "MessageInput"
+              },
+              "logit_bias": {
+                "tool_mode": false,
+                "trace_as_metadata": true,
+                "load_from_db": false,
+                "list": false,
+                "list_add_label": "Add More",
+                "override_skip": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "logit_bias",
+                "value": "",
+                "display_name": "Logit Bias",
+                "advanced": true,
+                "api_editable": false,
+                "dynamic": false,
+                "info": "JSON string of token IDs to bias or suppress (e.g., {\"1003\": -100, \"1004\": 100}).",
+                "title_case": false,
+                "track_in_telemetry": false,
+                "type": "str",
+                "_input_type": "StrInput"
+              },
+              "logprobs": {
+                "tool_mode": false,
+                "trace_as_metadata": true,
+                "list": false,
+                "list_add_label": "Add More",
+                "override_skip": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "logprobs",
+                "value": true,
+                "display_name": "Log Probabilities",
+                "advanced": true,
+                "api_editable": false,
+                "dynamic": false,
+                "info": "Whether to return log probabilities of the output tokens.",
+                "title_case": false,
+                "track_in_telemetry": true,
+                "type": "bool",
+                "_input_type": "BoolInput"
+              },
+              "max_tokens": {
+                "tool_mode": false,
+                "trace_as_metadata": true,
+                "range_spec": {
+                  "step_type": "float",
+                  "min": 1,
+                  "max": 4096,
+                  "step": 0.1
+                },
+                "list": false,
+                "list_add_label": "Add More",
+                "override_skip": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "max_tokens",
+                "value": 1000,
+                "display_name": "Max Tokens",
+                "advanced": true,
+                "api_editable": false,
+                "dynamic": false,
+                "info": "The maximum number of tokens to generate.",
+                "title_case": false,
+                "track_in_telemetry": true,
+                "type": "int",
+                "_input_type": "IntInput"
+              },
+              "model_name": {
+                "tool_mode": false,
+                "trace_as_metadata": true,
+                "options": [
+                  "ibm/granite-4-h-small",
+                  "ibm/granite-guardian-3-8b",
+                  "meta-llama/llama-3-3-70b-instruct",
+                  "meta-llama/llama-4-maverick-17b-128e-instruct-fp8",
+                  "mistral-large-2512",
+                  "mistralai/mistral-medium-2505",
+                  "mistralai/mistral-small-3-1-24b-instruct-2503",
+                  "openai/gpt-oss-120b"
+                ],
+                "options_metadata": [],
+                "combobox": false,
+                "dialog_inputs": {},
+                "toggle": false,
+                "override_skip": false,
+                "required": true,
+                "placeholder": "",
+                "show": true,
+                "name": "model_name",
+                "display_name": "Model Name",
+                "advanced": false,
+                "api_editable": false,
+                "dynamic": false,
+                "info": "",
+                "real_time_refresh": true,
+                "refresh_button": true,
+                "title_case": false,
+                "track_in_telemetry": true,
+                "external_options": {},
+                "type": "str",
+                "_input_type": "DropdownInput",
+                "value": "ibm/granite-4-h-small"
+              },
+              "presence_penalty": {
+                "tool_mode": false,
+                "min_label": "",
+                "max_label": "",
+                "min_label_icon": "",
+                "max_label_icon": "",
+                "slider_buttons": false,
+                "slider_buttons_options": [],
+                "slider_input": false,
+                "range_spec": {
+                  "step_type": "float",
+                  "min": -2,
+                  "max": 2,
+                  "step": 0.01
+                },
+                "override_skip": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "presence_penalty",
+                "value": 0.3,
+                "display_name": "Presence Penalty",
+                "advanced": true,
+                "api_editable": false,
+                "dynamic": false,
+                "info": "Penalty for token presence in prior text.",
+                "title_case": false,
+                "track_in_telemetry": false,
+                "type": "slider",
+                "_input_type": "SliderInput"
+              },
+              "project_id": {
+                "tool_mode": false,
+                "trace_as_metadata": true,
+                "load_from_db": false,
+                "list": false,
+                "list_add_label": "Add More",
+                "override_skip": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "project_id",
+                "value": "",
+                "display_name": "watsonx Project_ID",
+                "advanced": false,
+                "api_editable": false,
+                "dynamic": false,
+                "info": "The project ID associated with the foundation model.",
+                "title_case": false,
+                "track_in_telemetry": false,
+                "type": "str",
+                "_input_type": "StrInput"
+              },
+              "seed": {
+                "tool_mode": false,
+                "trace_as_metadata": true,
+                "list": false,
+                "list_add_label": "Add More",
+                "override_skip": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "seed",
+                "value": 8,
+                "display_name": "Random Seed",
+                "advanced": true,
+                "api_editable": false,
+                "dynamic": false,
+                "info": "The random seed for the model.",
+                "title_case": false,
+                "track_in_telemetry": true,
+                "type": "int",
+                "_input_type": "IntInput"
+              },
+              "space_id": {
+                "tool_mode": false,
+                "trace_as_metadata": true,
+                "load_from_db": false,
+                "list": false,
+                "list_add_label": "Add More",
+                "override_skip": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "space_id",
+                "value": "",
+                "display_name": "watsonx Space_ID",
+                "advanced": false,
+                "api_editable": false,
+                "dynamic": false,
+                "info": "The deployment space ID associated with the foundation model.",
+                "title_case": false,
+                "track_in_telemetry": false,
+                "type": "str",
+                "_input_type": "StrInput"
+              },
+              "stop_sequence": {
+                "tool_mode": false,
+                "trace_as_metadata": true,
+                "load_from_db": false,
+                "list": false,
+                "list_add_label": "Add More",
+                "override_skip": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "stop_sequence",
+                "value": "",
+                "display_name": "Stop Sequence",
+                "advanced": true,
+                "api_editable": false,
+                "dynamic": false,
+                "info": "Sequence where generation should stop.",
+                "title_case": false,
+                "track_in_telemetry": false,
+                "type": "str",
+                "_input_type": "StrInput"
+              },
+              "stream": {
+                "tool_mode": false,
+                "trace_as_metadata": true,
+                "list": false,
+                "list_add_label": "Add More",
+                "override_skip": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "stream",
+                "value": false,
+                "display_name": "Stream",
+                "advanced": true,
+                "api_editable": false,
+                "dynamic": false,
+                "info": "Stream the response from the model. Streaming works only in Chat.",
+                "title_case": false,
+                "track_in_telemetry": true,
+                "type": "bool",
+                "_input_type": "BoolInput"
+              },
+              "system_message": {
+                "tool_mode": false,
+                "trace_as_input": true,
+                "multiline": true,
+                "ai_enabled": false,
+                "trace_as_metadata": true,
+                "load_from_db": false,
+                "list": false,
+                "list_add_label": "Add More",
+                "override_skip": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "system_message",
+                "value": "",
+                "display_name": "System Message",
+                "advanced": false,
+                "api_editable": false,
+                "input_types": [
+                  "Message"
+                ],
+                "dynamic": false,
+                "info": "System message to pass to the model.",
+                "title_case": false,
+                "track_in_telemetry": false,
+                "copy_field": false,
+                "password": false,
+                "type": "str",
+                "_input_type": "MultilineInput"
+              },
+              "temperature": {
+                "tool_mode": false,
+                "min_label": "",
+                "max_label": "",
+                "min_label_icon": "",
+                "max_label_icon": "",
+                "slider_buttons": false,
+                "slider_buttons_options": [],
+                "slider_input": false,
+                "range_spec": {
+                  "step_type": "float",
+                  "min": 0,
+                  "max": 2,
+                  "step": 0.01
+                },
+                "override_skip": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "temperature",
+                "value": 0.1,
+                "display_name": "Temperature",
+                "advanced": true,
+                "api_editable": false,
+                "dynamic": false,
+                "info": "Controls randomness, higher values increase diversity.",
+                "title_case": false,
+                "track_in_telemetry": false,
+                "type": "slider",
+                "_input_type": "SliderInput"
+              },
+              "top_logprobs": {
+                "tool_mode": false,
+                "trace_as_metadata": true,
+                "range_spec": {
+                  "step_type": "float",
+                  "min": 1,
+                  "max": 20,
+                  "step": 0.1
+                },
+                "list": false,
+                "list_add_label": "Add More",
+                "override_skip": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "top_logprobs",
+                "value": 3,
+                "display_name": "Top Log Probabilities",
+                "advanced": true,
+                "api_editable": false,
+                "dynamic": false,
+                "info": "Number of most likely tokens to return at each position.",
+                "title_case": false,
+                "track_in_telemetry": true,
+                "type": "int",
+                "_input_type": "IntInput"
+              },
+              "top_p": {
+                "tool_mode": false,
+                "min_label": "",
+                "max_label": "",
+                "min_label_icon": "",
+                "max_label_icon": "",
+                "slider_buttons": false,
+                "slider_buttons_options": [],
+                "slider_input": false,
+                "range_spec": {
+                  "step_type": "float",
+                  "min": 0,
+                  "max": 1,
+                  "step": 0.01
+                },
+                "override_skip": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "top_p",
+                "value": 0.9,
+                "display_name": "Top P",
+                "advanced": true,
+                "api_editable": false,
+                "dynamic": false,
+                "info": "The cumulative probability cutoff for token selection. Lower values mean sampling from a smaller, more top-weighted nucleus.",
+                "title_case": false,
+                "track_in_telemetry": false,
+                "type": "slider",
+                "_input_type": "SliderInput"
+              },
+              "_frontend_node_flow_id": {
+                "value": "55e7c1cb-7aea-46b5-b6f4-e702e6b6e824"
+              },
+              "_frontend_node_folder_id": {
+                "value": ""
+              },
+              "is_refresh": false
+            },
+            "description": "Generate text using IBM watsonx.ai foundation models.",
+            "icon": "WatsonxAI",
+            "base_classes": [
+              "LanguageModel",
+              "Message"
+            ],
+            "display_name": "IBM watsonx.ai",
+            "documentation": "",
+            "minimized": false,
+            "custom_fields": {},
+            "output_types": [],
+            "pinned": false,
+            "conditional_paths": [],
+            "frozen": false,
+            "outputs": [
+              {
+                "types": [
+                  "Message"
+                ],
+                "selected": "Message",
+                "name": "text_output",
+                "display_name": "Model Response",
+                "method": "text_response",
+                "value": "__UNDEFINED__",
+                "cache": true,
+                "required_inputs": null,
+                "allows_loop": false,
+                "loop_types": null,
+                "group_outputs": false,
+                "options": null,
+                "tool_mode": true
+              },
+              {
+                "types": [
+                  "LanguageModel"
+                ],
+                "selected": "LanguageModel",
+                "name": "model_output",
+                "display_name": "Language Model",
+                "method": "build_model",
+                "value": "__UNDEFINED__",
+                "cache": true,
+                "required_inputs": null,
+                "allows_loop": false,
+                "loop_types": null,
+                "group_outputs": false,
+                "options": null,
+                "tool_mode": true
+              }
+            ],
+            "field_order": [
+              "input_value",
+              "system_message",
+              "stream",
+              "base_url",
+              "project_id",
+              "space_id",
+              "api_key",
+              "model_name",
+              "max_tokens",
+              "stop_sequence",
+              "temperature",
+              "top_p",
+              "frequency_penalty",
+              "presence_penalty",
+              "seed",
+              "logprobs",
+              "top_logprobs",
+              "logit_bias"
+            ],
+            "beta": false,
+            "legacy": false,
+            "edited": false,
+            "metadata": {
+              "keywords": [
+                "model",
+                "llm",
+                "language model",
+                "large language model"
+              ],
+              "module": "_lfx_ext.official.ibm.watsonx",
+              "model_provider_policy_mode": "standalone",
+              "model_provider_id": "ibm-watsonx",
+              "model_provider_display_name": "IBM WatsonX",
+              "code_hash": "27dca79adfe2",
+              "dependencies": {
+                "total_dependencies": 2,
+                "dependencies": [
+                  {
+                    "name": "langchain_ibm",
+                    "version": "1.1.0"
+                  },
+                  {
+                    "name": "lfx",
+                    "version": "1.12.0"
+                  }
+                ]
+              }
+            },
+            "tool_mode": false,
+            "extension": "lfx-ibm",
+            "bundle": "ibm",
+            "extension_version": "0.1.0",
+            "namespaced_id": "ext:ibm:WatsonxAIComponent@official",
+            "name": "IBMwatsonxModel",
+            "last_updated": "2026-09-06T13:51:20.972Z"
+          },
+          "showNode": true,
+          "type": "ext:ibm:WatsonxAIComponent@official",
+          "id": "ext:ibm:WatsonxAIComponent@official-zEZIO",
+          "selected_output": "text_output"
+        },
+        "selected": false,
+        "dragging": false,
+        "measured": {
+          "width": 320,
+          "height": 711
+        }
+      },
+      {
+        "id": "Prompt Template-vrR7b",
+        "type": "genericNode",
+        "position": {
+          "x": 160.54459024153437,
+          "y": 48.18856802992528
+        },
+        "data": {
+          "node": {
+            "template": {
+              "_type": "Component",
+              "code": {
+                "advanced": true,
+                "api_editable": false,
+                "dynamic": true,
+                "fileTypes": [],
+                "file_path": "",
+                "info": "",
+                "list": false,
+                "load_from_db": false,
+                "multiline": true,
+                "name": "code",
+                "password": false,
+                "placeholder": "",
+                "required": true,
+                "show": true,
+                "title_case": false,
+                "type": "code",
+                "value": "from typing import Any\n\nfrom lfx.base.prompts.api_utils import process_prompt_template\nfrom lfx.custom.custom_component.component import Component\nfrom lfx.inputs.input_mixin import FieldTypes\nfrom lfx.inputs.inputs import DefaultPromptField\nfrom lfx.io import BoolInput, MessageTextInput, Output, PromptInput\nfrom lfx.log.logger import logger\nfrom lfx.schema.dotdict import dotdict\nfrom lfx.schema.message import Message\nfrom lfx.template.utils import update_template_values\nfrom lfx.utils.mustache_security import validate_mustache_template\n\n\nclass PromptComponent(Component):\n    display_name: str = \"Prompt Template\"\n    description: str = \"Create a prompt template with dynamic variables.\"\n    documentation: str = \"https://docs.langflow.org/components-prompts\"\n    icon = \"prompts\"\n    trace_type = \"prompt\"\n    name = \"Prompt Template\"\n\n    inputs = [\n        PromptInput(name=\"template\", display_name=\"Template\"),\n        BoolInput(\n            name=\"use_double_brackets\",\n            display_name=\"Use Double Brackets\",\n            value=False,\n            advanced=True,\n            info=\"Use {{variable}} syntax instead of {variable}.\",\n            real_time_refresh=True,\n        ),\n        MessageTextInput(\n            name=\"tool_placeholder\",\n            display_name=\"Tool Placeholder\",\n            tool_mode=True,\n            advanced=True,\n            show=False,\n            info=\"A placeholder input for tool mode.\",\n        ),\n    ]\n\n    outputs = [\n        Output(display_name=\"Prompt\", name=\"prompt\", method=\"build_prompt\"),\n    ]\n\n    def update_build_config(self, build_config: dotdict, field_value: Any, field_name: str | None = None) -> dotdict:\n        \"\"\"Update the template field type based on the selected mode.\"\"\"\n        if field_name == \"use_double_brackets\":\n            # Change the template field type based on mode\n            is_mustache = field_value is True\n            if is_mustache:\n                build_config[\"template\"][\"type\"] = FieldTypes.MUSTACHE_PROMPT.value\n            else:\n                build_config[\"template\"][\"type\"] = FieldTypes.PROMPT.value\n\n            # Re-process the template to update variables when mode changes\n            template_value = build_config.get(\"template\", {}).get(\"value\", \"\")\n            if template_value:\n                # Ensure custom_fields is properly initialized\n                if \"custom_fields\" not in build_config:\n                    build_config[\"custom_fields\"] = {}\n\n                # Clean up fields from the OLD mode before processing with NEW mode\n                # This ensures we don't keep fields with wrong syntax even if validation fails\n                old_custom_fields = build_config[\"custom_fields\"].get(\"template\", [])\n                for old_field in list(old_custom_fields):\n                    # Remove the field from custom_fields and template\n                    if old_field in old_custom_fields:\n                        old_custom_fields.remove(old_field)\n                    build_config.pop(old_field, None)\n\n                # Try to process template with new mode to add new variables\n                # If validation fails, at least we cleaned up old fields\n                try:\n                    # Validate mustache templates for security\n                    if is_mustache:\n                        validate_mustache_template(template_value)\n\n                    # Re-process template with new mode to add new variables\n                    _ = process_prompt_template(\n                        template=template_value,\n                        name=\"template\",\n                        custom_fields=build_config[\"custom_fields\"],\n                        frontend_node_template=build_config,\n                        is_mustache=is_mustache,\n                    )\n                except ValueError as e:\n                    # If validation fails, we still updated the mode and cleaned old fields\n                    # User will see error when they try to save\n                    logger.debug(\"Template validation failed during mode switch\", exc_info=e)\n        return build_config\n\n    async def build_prompt(self) -> Message:\n        use_double_brackets = self.use_double_brackets if hasattr(self, \"use_double_brackets\") else False\n        template_format = \"mustache\" if use_double_brackets else \"f-string\"\n        prompt = await Message.from_template_and_variables(template_format=template_format, **self._attributes)\n        self.status = prompt.text\n        return prompt\n\n    def _update_template(self, frontend_node: dict):\n        prompt_template = frontend_node[\"template\"][\"template\"][\"value\"]\n        use_double_brackets = frontend_node[\"template\"].get(\"use_double_brackets\", {}).get(\"value\", False)\n        is_mustache = use_double_brackets is True\n\n        try:\n            # Validate mustache templates for security\n            if is_mustache:\n                validate_mustache_template(prompt_template)\n\n            custom_fields = frontend_node[\"custom_fields\"]\n            frontend_node_template = frontend_node[\"template\"]\n            _ = process_prompt_template(\n                template=prompt_template,\n                name=\"template\",\n                custom_fields=custom_fields,\n                frontend_node_template=frontend_node_template,\n                is_mustache=is_mustache,\n            )\n        except ValueError as e:\n            # If validation fails, don't add variables but allow component to be created\n            logger.debug(\"Template validation failed in _update_template\", exc_info=e)\n        return frontend_node\n\n    async def update_frontend_node(self, new_frontend_node: dict, current_frontend_node: dict):\n        \"\"\"This function is called after the code validation is done.\"\"\"\n        frontend_node = await super().update_frontend_node(new_frontend_node, current_frontend_node)\n        template = frontend_node[\"template\"][\"template\"][\"value\"]\n        use_double_brackets = frontend_node[\"template\"].get(\"use_double_brackets\", {}).get(\"value\", False)\n        is_mustache = use_double_brackets is True\n\n        try:\n            # Validate mustache templates for security\n            if is_mustache:\n                validate_mustache_template(template)\n\n            # Kept it duplicated for backwards compatibility\n            _ = process_prompt_template(\n                template=template,\n                name=\"template\",\n                custom_fields=frontend_node[\"custom_fields\"],\n                frontend_node_template=frontend_node[\"template\"],\n                is_mustache=is_mustache,\n            )\n        except ValueError as e:\n            # If validation fails, don't add variables but allow component to be updated\n            logger.debug(\"Template validation failed in update_frontend_node\", exc_info=e)\n        # Now that template is updated, we need to grab any values that were set in the current_frontend_node\n        # and update the frontend_node with those values\n        update_template_values(new_template=frontend_node, previous_template=current_frontend_node[\"template\"])\n        return frontend_node\n\n    def _get_fallback_input(self, **kwargs):\n        return DefaultPromptField(**kwargs)\n"
+              },
+              "template": {
+                "_input_type": "PromptInput",
+                "advanced": false,
+                "api_editable": false,
+                "display_name": "Template",
+                "dynamic": false,
+                "info": "",
+                "list": false,
+                "list_add_label": "Add More",
+                "name": "template",
+                "override_skip": false,
+                "placeholder": "",
+                "required": false,
+                "show": true,
+                "title_case": false,
+                "tool_mode": false,
+                "trace_as_input": true,
+                "track_in_telemetry": false,
+                "type": "prompt",
+                "value": "Kamu adalah sistem ekstraksi harga untuk pedagang kaki lima di Indonesia. Kamu menerima transkrip ucapan penjual selama jam dagang. Tugasmu:\n\n1. Tentukan apakah ini FRASA TUTUP BUKU (penjual mengumumkan sesi selesai dan melaporkan total uang tunai yang dihitung), atau CATATAN TRANSAKSI BIASA (penjual menyebutkan harga sebuah pesanan). Ciri frasa tutup buku: kata \"tutup\", \"udah selesai\", \"segitu aja hari ini\", \"totalnya\", \"tutup buku\", diikuti sebuah angka total.\n\n2. Ekstrak angka harga dalam Rupiah. Penjual sering pakai istilah pasar: gocap = 50000, goceng = 5000, ceban = 10000, noceng = 9000, cepek = 100000, seceng = 1000. Angka bisa disebut per item dikalikan jumlah, misalnya goceng dua berarti 2 kali 5000 sama dengan 10000.\n\n3. Kalau bukan frasa tutup buku, ekstrak juga nama barangnya kalau disebut, misalnya bakso, es teh, gorengan. Kalau tidak jelas, boleh dikosongkan (null).\n\n4. Berikan confidence dari 0 sampai 1 berdasarkan seberapa yakin kamu terhadap angka yang diekstrak. Turunkan confidence kalau transkrip ambigu, terpotong, atau angkanya tidak eksplisit disebut.\n\n5. Kalau tidak ada harga yang bisa diekstrak sama sekali karena ini obrolan biasa bukan transaksi, kembalikan amount berupa null.\n\nTranskrip yang harus dianalisis:\n{transcript}\n\nBalas HANYA dengan satu objek JSON valid, tanpa teks lain, tanpa markdown code fence. Objek JSON itu harus punya persis empat key berikut: amount (angka atau null), itemLabel (string atau null), confidence (angka 0 sampai 1), isClosingReport (true atau false)."
+              },
+              "tool_placeholder": {
+                "_input_type": "MessageTextInput",
+                "advanced": true,
+                "api_editable": false,
+                "display_name": "Tool Placeholder",
+                "dynamic": false,
+                "info": "A placeholder input for tool mode.",
+                "input_types": [
+                  "Message"
+                ],
+                "list": false,
+                "list_add_label": "Add More",
+                "load_from_db": false,
+                "name": "tool_placeholder",
+                "override_skip": false,
+                "placeholder": "",
+                "required": false,
+                "show": false,
+                "title_case": false,
+                "tool_mode": true,
+                "trace_as_input": true,
+                "trace_as_metadata": true,
+                "track_in_telemetry": false,
+                "type": "str",
+                "value": ""
+              },
+              "use_double_brackets": {
+                "_input_type": "BoolInput",
+                "advanced": true,
+                "api_editable": false,
+                "display_name": "Use Double Brackets",
+                "dynamic": false,
+                "info": "Use {{variable}} syntax instead of {variable}.",
+                "list": false,
+                "list_add_label": "Add More",
+                "name": "use_double_brackets",
+                "override_skip": false,
+                "placeholder": "",
+                "real_time_refresh": true,
+                "required": false,
+                "show": true,
+                "title_case": false,
+                "tool_mode": false,
+                "trace_as_metadata": true,
+                "track_in_telemetry": true,
+                "type": "bool",
+                "value": false
+              },
+              "transcript": {
+                "field_type": "str",
+                "required": false,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "multiline": true,
+                "value": "",
+                "fileTypes": [],
+                "file_path": "",
+                "name": "transcript",
+                "display_name": "transcript",
+                "advanced": false,
+                "api_editable": false,
+                "input_types": [
+                  "Message"
+                ],
+                "dynamic": false,
+                "info": "",
+                "load_from_db": false,
+                "title_case": false,
+                "type": "str"
+              }
+            },
+            "description": "Create a prompt template with dynamic variables.",
+            "icon": "prompts",
+            "is_input": null,
+            "is_output": null,
+            "is_composition": null,
+            "base_classes": [
+              "Message"
+            ],
+            "name": "",
+            "display_name": "Prompt Template",
+            "priority": null,
+            "documentation": "https://docs.langflow.org/components-prompts",
+            "minimized": false,
+            "custom_fields": {
+              "template": [
+                "transcript"
+              ]
+            },
+            "output_types": [],
+            "full_path": null,
+            "pinned": false,
+            "conditional_paths": [],
+            "frozen": false,
+            "outputs": [
+              {
+                "types": [
+                  "Message"
+                ],
+                "selected": "Message",
+                "name": "prompt",
+                "hidden": null,
+                "display_name": "Prompt",
+                "method": "build_prompt",
+                "value": "__UNDEFINED__",
+                "cache": true,
+                "required_inputs": null,
+                "allows_loop": false,
+                "loop_types": null,
+                "group_outputs": false,
+                "options": null,
+                "tool_mode": true
+              }
+            ],
+            "field_order": [
+              "template",
+              "use_double_brackets",
+              "tool_placeholder"
+            ],
+            "beta": false,
+            "legacy": false,
+            "replacement": null,
+            "error": null,
+            "edited": false,
+            "metadata": {
+              "code_hash": "e3714ffe5d15",
+              "dependencies": {
+                "dependencies": [
+                  {
+                    "name": "lfx",
+                    "version": null
+                  }
+                ],
+                "total_dependencies": 1
+              },
+              "module": "lfx.components.models_and_agents.prompt.PromptComponent"
+            },
+            "tool_mode": false,
+            "add_tool_output": null,
+            "lf_version": "1.11.6"
+          },
+          "showNode": true,
+          "type": "Prompt Template",
+          "id": "Prompt Template-vrR7b"
+        },
+        "selected": false,
+        "dragging": false,
+        "measured": {
+          "width": 320,
+          "height": 345
+        }
+      },
+      {
+        "id": "CustomComponent-DRIaU",
+        "type": "genericNode",
+        "position": {
+          "x": 58.47226841282216,
+          "y": 462.3807950777621
+        },
+        "data": {
+          "node": {
+            "template": {
+              "_type": "Component",
+              "audio_file": {
+                "tool_mode": false,
+                "trace_as_metadata": true,
+                "file_path": "",
+                "fileTypes": [
+                  "wav",
+                  "mp3",
+                  "m4a",
+                  "ogg",
+                  "webm",
+                  "mpeg"
+                ],
+                "temp_file": false,
+                "list": false,
+                "list_add_label": "Add More",
+                "override_skip": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "audio_file",
+                "value": "",
+                "display_name": "Audio File",
+                "advanced": false,
+                "api_editable": false,
+                "dynamic": false,
+                "info": "Rekaman audio dari MediaRecorder di browser.",
+                "title_case": false,
+                "track_in_telemetry": false,
+                "type": "file",
+                "_input_type": "FileInput"
+              },
+              "code": {
+                "type": "code",
+                "required": true,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "multiline": true,
+                "value": "import time\nimport random\nimport requests\nfrom lfx.custom.custom_component.component import Component\nfrom lfx.io import FileInput, SecretStrInput, Output\nfrom lfx.schema.message import Message\n\n\nclass CustomComponent(Component):\n    display_name = \"Speech-to-Text (Groq Whisper)\"\n    description = \"Transkrip audio Bahasa Indonesia memakai Groq Whisper API.\"\n    documentation: str = \"https://console.groq.com/docs/speech-to-text\"\n    icon = \"code\"\n    name = \"CustomComponent\"\n\n    inputs = [\n        FileInput(\n            name=\"audio_file\",\n            display_name=\"Audio File\",\n            file_types=[\"wav\", \"mp3\", \"m4a\", \"ogg\", \"webm\", \"mpeg\"],\n            info=\"Rekaman audio dari MediaRecorder di browser.\",\n        ),\n        SecretStrInput(\n            name=\"groq_api_key\",\n            display_name=\"Groq API Key\",\n            info=\"Dipakai untuk transkripsi audio lewat Groq Whisper API.\",\n        ),\n    ]\n\n    outputs = [\n        Output(display_name=\"Transcript\", name=\"transcript\", method=\"transcribe\"),\n    ]\n\n    def transcribe(self) -> Message:\n        file_path = self.audio_file\n        if not file_path:\n            return Message(text=\"\")\n\n        url = \"https://api.groq.com/openai/v1/audio/transcriptions\"\n        headers = {\"Authorization\": f\"Bearer {self.groq_api_key}\"}\n\n        ext = str(file_path).rsplit(\".\", 1)[-1].lower()\n        mime_map = {\n            \"mp3\": \"audio/mpeg\",\n            \"wav\": \"audio/wav\",\n            \"m4a\": \"audio/mp4\",\n            \"ogg\": \"audio/ogg\",\n            \"webm\": \"audio/webm\",\n            \"mpeg\": \"audio/mpeg\",\n        }\n        mime_type = mime_map.get(ext, \"audio/mpeg\")\n\n        # Groq free-tier keys are rate-limited (RPM). Retry transient 429/5xx\n        # with exponential backoff (+ jitter) instead of failing the whole\n        # pipeline on the first hiccup.\n        max_attempts = 4\n        base_delay_seconds = 3\n        last_error = None\n\n        for attempt in range(1, max_attempts + 1):\n            with open(file_path, \"rb\") as audio_handle:\n                files = {\"file\": (str(file_path).rsplit(\"/\", 1)[-1], audio_handle, mime_type)}\n                data = {\n                    \"model\": \"whisper-large-v3-turbo\",\n                    \"language\": \"id\",\n                    \"response_format\": \"json\",\n                }\n                response = requests.post(\n                    url, headers=headers, files=files, data=data, timeout=60\n                )\n\n            if response.status_code == 200:\n                result = response.json()\n                transcript_text = result[\"text\"].strip()\n                self.status = transcript_text\n                return Message(text=transcript_text)\n\n            if response.status_code == 429 or response.status_code >= 500:\n                last_error = response\n                if attempt == max_attempts:\n                    break\n                retry_after = response.headers.get(\"Retry-After\")\n                if retry_after:\n                    try:\n                        delay = float(retry_after)\n                    except ValueError:\n                        delay = base_delay_seconds * (2 ** (attempt - 1))\n                else:\n                    delay = base_delay_seconds * (2 ** (attempt - 1))\n                delay += random.uniform(0, 1)\n                self.status = (\n                    f\"Groq API rate-limited (percobaan {attempt}/{max_attempts}), \"\n                    f\"mencoba lagi dalam {delay:.1f} detik...\"\n                )\n                time.sleep(delay)\n                continue\n\n            # Non-retryable error (4xx other than 429) â fail immediately.\n            response.raise_for_status()\n\n        detail = last_error.text[:300] if last_error is not None else \"unknown error\"\n        raise RuntimeError(\n            f\"Groq API masih rate-limited setelah {max_attempts} percobaan. \"\n            f\"Coba lagi dalam beberapa saat, atau cek kuota di console.groq.com. Detail: {detail}\"\n        )\n",
+                "fileTypes": [],
+                "file_path": "",
+                "password": false,
+                "name": "code",
+                "advanced": true,
+                "api_editable": false,
+                "dynamic": true,
+                "info": "",
+                "load_from_db": false,
+                "title_case": false
+              },
+              "groq_api_key": {
+                "load_from_db": true,
+                "override_skip": false,
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "groq_api_key",
+                "value": "GROQ_API_KEY",
+                "display_name": "Groq API Key",
+                "advanced": false,
+                "api_editable": false,
+                "input_types": [],
+                "dynamic": false,
+                "info": "Dipakai untuk transkripsi audio lewat Groq Whisper API.",
+                "title_case": false,
+                "track_in_telemetry": false,
+                "password": true,
+                "type": "str",
+                "_input_type": "SecretStrInput"
+              }
+            },
+            "description": "Transkrip audio Bahasa Indonesia memakai Groq Whisper API.",
+            "icon": "code",
+            "base_classes": [
+              "JSON",
+              "Message"
+            ],
+            "display_name": "Speech-to-Text (Groq Whisper)",
+            "documentation": "https://docs.langflow.org/components-custom-components",
+            "minimized": false,
+            "custom_fields": {},
+            "output_types": [],
+            "pinned": false,
+            "conditional_paths": [],
+            "frozen": false,
+            "outputs": [
+              {
+                "types": [
+                  "Message"
+                ],
+                "selected": "Message",
+                "name": "transcript",
+                "hidden": null,
+                "display_name": "Output",
+                "method": "transcribe",
+                "value": "__UNDEFINED__",
+                "cache": true,
+                "required_inputs": null,
+                "allows_loop": false,
+                "loop_types": null,
+                "group_outputs": false,
+                "options": null,
+                "tool_mode": true
+              }
+            ],
+            "field_order": [
+              "audio_file",
+              "openai_api_key",
+              "input_value"
+            ],
+            "beta": false,
+            "legacy": false,
+            "edited": true,
+            "metadata": {
+              "module": "custom_components.speechtotext_whisper",
+              "code_hash": "cb77e1581c23",
+              "dependencies": {
+                "total_dependencies": 2,
+                "dependencies": [
+                  {
+                    "name": "lfx",
+                    "version": "1.12.0"
+                  },
+                  {
+                    "name": "requests",
+                    "version": "2.34.2"
+                  }
+                ]
+              }
+            },
+            "tool_mode": false,
+            "lf_version": "1.11.6"
+          },
+          "showNode": true,
+          "type": "CustomComponent",
+          "id": "CustomComponent-DRIaU",
+          "selected_output": "transcript"
+        },
+        "selected": false,
+        "dragging": false,
+        "measured": {
+          "width": 320,
+          "height": 314
+        }
+      },
+      {
+        "id": "CustomComponent-StructOut1",
+        "type": "genericNode",
+        "position": {
+          "x": 900,
+          "y": 109
+        },
+        "data": {
+          "node": {
+            "template": {
+              "_type": "Component",
+              "model_response": {
+                "tool_mode": false,
+                "trace_as_input": true,
+                "trace_as_metadata": true,
+                "load_from_db": false,
+                "list": false,
+                "list_add_label": "Add More",
+                "required": false,
+                "placeholder": "",
+                "show": true,
+                "name": "model_response",
+                "value": "",
+                "display_name": "Model Response",
+                "advanced": false,
+                "input_types": [
+                  "Message"
+                ],
+                "dynamic": false,
+                "info": "Teks JSON mentah dari IBM watsonx.ai.",
+                "title_case": false,
+                "type": "str",
+                "_input_type": "MessageTextInput"
+              },
+              "code": {
+                "type": "code",
+                "required": true,
+                "placeholder": "",
+                "list": false,
+                "show": true,
+                "multiline": true,
+                "value": "import json\nimport re\nfrom lfx.custom.custom_component.component import Component\nfrom lfx.io import MessageTextInput, Output\nfrom lfx.schema.message import Message\n\n\nclass CustomComponent(Component):\n    display_name = \"Structured Output Parser\"\n    description = \"Validasi & rapikan JSON hasil watsonx.ai supaya sesuai schema VoiceExtractionResult.\"\n    icon = \"code\"\n    name = \"CustomComponent\"\n\n    inputs = [\n        MessageTextInput(\n            name=\"model_response\",\n            display_name=\"Model Response\",\n            info=\"Teks JSON mentah dari IBM watsonx.ai.\",\n        ),\n    ]\n\n    outputs = [\n        Output(display_name=\"Structured JSON\", name=\"structured_output\", method=\"parse\"),\n    ]\n\n    def parse(self) -> Message:\n        raw = (self.model_response or \"\").strip()\n\n        candidate = raw\n        match = re.search(r\"\\{.*\\}\", raw, re.DOTALL)\n        if match:\n            candidate = match.group(0)\n\n        try:\n            data = json.loads(candidate)\n            if not isinstance(data, dict):\n                raise ValueError(\"Model tidak mengembalikan JSON object.\")\n        except (json.JSONDecodeError, ValueError) as exc:\n            self.status = f\"Gagal parse JSON: {exc}\\nRaw: {raw[:300]}\"\n            fallback = {\n                \"amount\": None,\n                \"itemLabel\": None,\n                \"confidence\": 0.0,\n                \"isClosingReport\": False,\n            }\n            return Message(text=json.dumps(fallback, ensure_ascii=False))\n\n        def to_number_or_none(value):\n            if value is None:\n                return None\n            try:\n                return float(value)\n            except (TypeError, ValueError):\n                return None\n\n        def to_bool(value):\n            if isinstance(value, bool):\n                return value\n            if isinstance(value, str):\n                return value.strip().lower() in (\"true\", \"1\", \"yes\", \"ya\")\n            return bool(value)\n\n        amount = to_number_or_none(data.get(\"amount\"))\n        item_label = data.get(\"itemLabel\")\n        if item_label is not None and not isinstance(item_label, str):\n            item_label = str(item_label)\n\n        confidence_raw = to_number_or_none(data.get(\"confidence\"))\n        confidence = 0.5 if confidence_raw is None else max(0.0, min(1.0, confidence_raw))\n\n        is_closing_report = to_bool(data.get(\"isClosingReport\", False))\n\n        clean = {\n            \"amount\": amount,\n            \"itemLabel\": item_label,\n            \"confidence\": confidence,\n            \"isClosingReport\": is_closing_report,\n        }\n\n        self.status = json.dumps(clean, ensure_ascii=False)\n        return Message(text=json.dumps(clean, ensure_ascii=False))\n",
+                "fileTypes": [],
+                "file_path": "",
+                "password": false,
+                "name": "code",
+                "advanced": true,
+                "api_editable": false,
+                "dynamic": true,
+                "info": "",
+                "load_from_db": false,
+                "title_case": false
+              }
+            },
+            "description": "Validasi & rapikan JSON hasil watsonx.ai supaya sesuai schema VoiceExtractionResult.",
+            "icon": "code",
+            "base_classes": [
+              "Message"
+            ],
+            "display_name": "Structured Output Parser",
+            "documentation": "https://docs.langflow.org/components-custom-components",
+            "minimized": false,
+            "custom_fields": {},
+            "output_types": [],
+            "pinned": false,
+            "conditional_paths": [],
+            "frozen": false,
+            "outputs": [
+              {
+                "types": [
+                  "Message"
+                ],
+                "selected": "Message",
+                "name": "structured_output",
+                "hidden": null,
+                "display_name": "Output",
+                "method": "parse",
+                "value": "__UNDEFINED__",
+                "cache": true,
+                "required_inputs": null,
+                "allows_loop": false,
+                "loop_types": null,
+                "group_outputs": false,
+                "options": null,
+                "tool_mode": true
+              }
+            ],
+            "field_order": [
+              "model_response"
+            ],
+            "beta": false,
+            "legacy": false,
+            "edited": true,
+            "metadata": {},
+            "tool_mode": false,
+            "lf_version": "1.11.6"
+          },
+          "showNode": true,
+          "type": "CustomComponent",
+          "id": "CustomComponent-StructOut1"
+        },
+        "selected": false,
+        "dragging": false,
+        "measured": {
+          "width": 320,
+          "height": 222
+        }
+      }
+    ],
+    "edges": [
+      {
+        "source": "CustomComponent-DRIaU",
+        "sourceHandle": "{ÅdataTypeÅ:ÅCustomComponentÅ,ÅidÅ:ÅCustomComponent-DRIaUÅ,ÅnameÅ:ÅtranscriptÅ,Åoutput_typesÅ:[ÅMessageÅ]}",
+        "target": "Prompt Template-vrR7b",
+        "targetHandle": "{ÅfieldNameÅ:ÅtranscriptÅ,ÅidÅ:ÅPrompt Template-vrR7bÅ,ÅinputTypesÅ:[ÅMessageÅ],ÅtypeÅ:ÅstrÅ}",
+        "data": {
+          "targetHandle": {
+            "fieldName": "transcript",
+            "id": "Prompt Template-vrR7b",
+            "inputTypes": [
+              "Message"
+            ],
+            "type": "str"
+          },
+          "sourceHandle": {
+            "dataType": "CustomComponent",
+            "id": "CustomComponent-DRIaU",
+            "name": "transcript",
+            "output_types": [
+              "Message"
+            ]
+          }
+        },
+        "id": "xy-edge__CustomComponent-DRIaU{ÅdataTypeÅ:ÅCustomComponentÅ,ÅidÅ:ÅCustomComponent-DRIaUÅ,ÅnameÅ:ÅtranscriptÅ,Åoutput_typesÅ:[ÅMessageÅ]}-Prompt Template-vrR7b{ÅfieldNameÅ:ÅtranscriptÅ,ÅidÅ:ÅPrompt Template-vrR7bÅ,ÅinputTypesÅ:[ÅMessageÅ],ÅtypeÅ:ÅstrÅ}",
+        "selected": false,
+        "animated": false,
+        "className": ""
+      },
+      {
+        "source": "Prompt Template-vrR7b",
+        "sourceHandle": "{ÅdataTypeÅ:ÅPrompt TemplateÅ,ÅidÅ:ÅPrompt Template-vrR7bÅ,ÅnameÅ:ÅpromptÅ,Åoutput_typesÅ:[ÅMessageÅ]}",
+        "target": "ext:ibm:WatsonxAIComponent@official-zEZIO",
+        "targetHandle": "{ÅfieldNameÅ:Åinput_valueÅ,ÅidÅ:Åext:ibm:WatsonxAIComponent@official-zEZIOÅ,ÅinputTypesÅ:[ÅMessageÅ],ÅtypeÅ:ÅstrÅ}",
+        "data": {
+          "targetHandle": {
+            "fieldName": "input_value",
+            "id": "ext:ibm:WatsonxAIComponent@official-zEZIO",
+            "inputTypes": [
+              "Message"
+            ],
+            "type": "str"
+          },
+          "sourceHandle": {
+            "dataType": "Prompt Template",
+            "id": "Prompt Template-vrR7b",
+            "name": "prompt",
+            "output_types": [
+              "Message"
+            ]
+          }
+        },
+        "id": "xy-edge__Prompt Template-vrR7b{ÅdataTypeÅ:ÅPrompt TemplateÅ,ÅidÅ:ÅPrompt Template-vrR7bÅ,ÅnameÅ:ÅpromptÅ,Åoutput_typesÅ:[ÅMessageÅ]}-ext:ibm:WatsonxAIComponent@official-zEZIO{ÅfieldNameÅ:Åinput_valueÅ,ÅidÅ:Åext:ibm:WatsonxAIComponent@official-zEZIOÅ,ÅinputTypesÅ:[ÅMessageÅ],ÅtypeÅ:ÅstrÅ}",
+        "selected": false,
+        "animated": false,
+        "className": ""
+      },
+      {
+        "source": "ext:ibm:WatsonxAIComponent@official-zEZIO",
+        "sourceHandle": "{ÅdataTypeÅ:Åext:ibm:WatsonxAIComponent@officialÅ,ÅidÅ:Åext:ibm:WatsonxAIComponent@official-zEZIOÅ,ÅnameÅ:Åtext_outputÅ,Åoutput_typesÅ:[ÅMessageÅ]}",
+        "target": "CustomComponent-StructOut1",
+        "targetHandle": "{ÅfieldNameÅ:Åmodel_responseÅ,ÅidÅ:ÅCustomComponent-StructOut1Å,ÅinputTypesÅ:[ÅMessageÅ],ÅtypeÅ:ÅstrÅ}",
+        "data": {
+          "targetHandle": {
+            "fieldName": "model_response",
+            "id": "CustomComponent-StructOut1",
+            "inputTypes": [
+              "Message"
+            ],
+            "type": "str"
+          },
+          "sourceHandle": {
+            "dataType": "ext:ibm:WatsonxAIComponent@official",
+            "id": "ext:ibm:WatsonxAIComponent@official-zEZIO",
+            "name": "text_output",
+            "output_types": [
+              "Message"
+            ]
+          }
+        },
+        "id": "xy-edge__auto-structured-output",
+        "selected": false,
+        "animated": false,
+        "className": ""
+      }
+    ],
+    "viewport": {
+      "x": -8.392227312358841,
+      "y": 180.1886731333873,
+      "zoom": 0.4855673994363597
+    }
+  },
+  "is_component": false,
+  "updated_at": "2026-09-06T14:24:42+00:00",
+  "webhook": false,
+  "endpoint_name": null,
+  "tags": [],
+  "locked": false,
+  "mcp_enabled": true,
+  "action_name": null,
+  "action_description": null,
+  "access_type": "PRIVATE",
+  "flow_type": "workflow",
+  "a2a_enabled": false,
+  "a2a_card_overrides": null,
+  "id": "55e7c1cb-7aea-46b5-b6f4-e702e6b6e824",
+  "name_key": null
+}

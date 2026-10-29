@@ -15,7 +15,7 @@
 // (src/app/api/voice/extract/route.ts), which:
 //   1. Uploads the audio blob into the Langflow flow's temp file storage.
 //   2. Runs the "Kasir Siluman - Voice to Transaction" Langflow flow
-//      (Speech-to-Text (Gemini) → Prompt Template → IBM watsonx.ai →
+//      (Speech-to-Text (Groq Whisper) → Prompt Template → IBM watsonx.ai →
 //      Structured Output Parser), tweaking the Speech-to-Text component's
 //      FileInput to point at the uploaded file.
 //   3. Deletes the uploaded file again once the run completes.

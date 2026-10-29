@@ -15,3 +15,6 @@ next-env.d.ts
 # Internal AI-coding-agent build briefs — not part of the public submission
 BOB_BRIEF.md
 BOB_TASK_*.md
+
+# python
+__pycache__/

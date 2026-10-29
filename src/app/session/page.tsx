@@ -81,6 +81,7 @@ type RecordingStatus =
   | "error";     // last attempt failed — message stored in voiceError
 
 type RadarStatus =
+  | "idle"              // nothing queried yet
   | "inactive"          // pipeline not yet wired — shown as honest placeholder
   | "loading"           // getNeighborhoodPricing() in flight
   | "ready"             // result available
@@ -103,6 +104,12 @@ interface SavingsProposal {
   status: "PENDING_SELLER_CONFIRMATION" | "CONFIRMED" | "DECLINED";
   lockedUntil: string;
   createdAt: string;
+}
+
+// Live per-source total while a session is open (stored totals are only
+// computed by the server at close).
+function sumBySource(txs: Transaction[], source: Transaction["source"]) {
+  return txs.filter((t) => t.source === source).reduce((sum, t) => sum + t.amount, 0);
 }
 
 function rupiah(n: number) {
@@ -183,7 +190,7 @@ export default function SessionPage() {
   const [lastVoiceResult, setLastVoiceResult] = useState<string | null>(null);
 
   // ── Radar Tetangga state ──────────────────────────────────────────────────
-  const [radarStatus, setRadarStatus] = useState<RadarStatus>("inactive");
+  const [radarStatus, setRadarStatus] = useState<RadarStatus>("idle");
   const [radarResult, setRadarResult] = useState<NeighborhoodPricing | null>(null);
   const [radarQuery, setRadarQuery] = useState(""); // item label to look up
 
@@ -556,7 +563,7 @@ export default function SessionPage() {
                   <IconCircle tone="teal"><CreditCard size={ICON_SIZE} /></IconCircle>
                   <div className="min-w-0">
                     <p className="text-[11px] font-medium text-slate-400">QRIS</p>
-                    <p className="truncate text-base font-bold tabular-nums text-navy">{rupiah(session.qrisTotal)}</p>
+                    <p className="truncate text-base font-bold tabular-nums text-navy">{rupiah(sumBySource(session.transactions, "qris"))}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-2.5 rounded-xl bg-slate-50 p-3">
@@ -564,7 +571,7 @@ export default function SessionPage() {
                   <div className="min-w-0">
                     <p className="text-[11px] font-medium text-slate-400">Suara</p>
                     <p className="truncate text-base font-bold tabular-nums text-navy">
-                      {rupiah(session.voiceCashEstimate)}
+                      {rupiah(sumBySource(session.transactions, "voice"))}
                     </p>
                   </div>
                 </div>
@@ -787,10 +794,6 @@ function VoicePanel({
           <EyebrowLabel>Langkah 2 · Rekam Harga / Tutup Buku</EyebrowLabel>
           <p className="mt-1 text-xs text-slate-400">
             Tekan Rekam, sebutkan harga atau ucapkan &quot;tutup buku&quot;, lalu tekan Berhenti.
-            {/* TODO: remove this notice once Langflow is wired in */}{" "}
-            <span className="font-medium text-orange">
-              (Pipeline suara belum tersambung — lihat src/lib/voiceToTransaction.ts)
-            </span>
           </p>
         </div>
       </div>

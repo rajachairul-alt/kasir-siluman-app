@@ -6,7 +6,7 @@ info:
     seller's device.  Called by the watsonx Orchestrate "Listener" agent.
 
     Authentication: multipart/form-data upload — the Langflow pipeline handles
-    the actual STT+LLM chain (Speech-to-Text Gemini → watsonx.ai Granite →
+    the actual STT+LLM chain (Speech-to-Text Groq Whisper → watsonx.ai Granite →
     Structured Output Parser).  The LANGFLOW_API_KEY credential must be
     registered in the Orchestrate credential vault and forwarded via the
     Next.js server (the browser never sees it).

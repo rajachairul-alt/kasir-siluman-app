@@ -6,7 +6,7 @@ import { runLangflowFlow, extractJsonArtifact } from "@/lib/langflowRun";
 //
 // Server-side seam between the browser's MediaRecorder blob and the
 // Langflow "Kasir Siluman - Voice to Transaction" pipeline
-// (Speech-to-Text (Gemini) → Prompt Template → IBM watsonx.ai →
+// (Speech-to-Text (Groq Whisper) → Prompt Template → IBM watsonx.ai →
 // Structured Output Parser).
 //
 // Contract with the browser (src/lib/voiceToTransaction.ts):
@@ -25,7 +25,7 @@ import { runLangflowFlow, extractJsonArtifact } from "@/lib/langflowRun";
 //   LANGFLOW_BASE_URL                        e.g. "http://localhost:7860"
 //   LANGFLOW_VOICE_TO_TRANSACTION_FLOW_ID     the flow's UUID
 //   LANGFLOW_API_KEY                          a Langflow API key (Settings → Langflow API Keys)
-//   LANGFLOW_VOICE_STT_COMPONENT_ID           node id of the "Speech-to-Text (Gemini)"
+//   LANGFLOW_VOICE_STT_COMPONENT_ID           node id of the "Speech-to-Text (Groq Whisper)"
 //                                              custom component inside that flow — this is
 //                                              what the FileInput tweak targets. Find it by
 //                                              opening the flow and checking the component's

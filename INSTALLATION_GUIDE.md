@@ -53,7 +53,7 @@ Copy from `.env.example`. **Never commit `.env` with real values** — it's alre
 
 ## 4. Langflow pipelines
 
-Self-host Langflow (`pip install langflow` then `langflow run`, default port 7860), or use Langflow Cloud. Build three flows. All three end in a component that returns a single clean JSON string — the Next.js routes look for that exact JSON shape, not any particular wording of it.
+Self-host Langflow (`pip install langflow` then `langflow run`, default port 7860), or use Langflow Cloud. Build three flows — or import the sanitized exports in [`langflow/`](./langflow/README.md) instead of building them from scratch. All three end in a component that returns a single clean JSON string — the Next.js routes look for that exact JSON shape, not any particular wording of it.
 
 ### 4.0 Demo-day hosting: self-hosted Langflow + ngrok
 
@@ -93,7 +93,9 @@ Railway's free/trial plan OOM-kills the Langflow worker on boot (needs more memo
 { amount?: number; itemLabel?: string; confidence?: number; isClosingReport: boolean }
 ```
 
-Node chain: `Speech-to-Text (custom component, e.g. Whisper) → Prompt Template → IBM watsonx.ai (Granite, temp 0.1–0.2) → Structured Output Parser`.
+Node chain: `Speech-to-Text (Groq Whisper, custom component) → Prompt Template → IBM watsonx.ai (ibm/granite-4-h-small, temp 0.1–0.2) → Structured Output Parser`.
+
+The Speech-to-Text component calls Groq's OpenAI-compatible transcription endpoint with model `whisper-large-v3-turbo` and `language=id`. Its Groq API key is set on the component's `groq_api_key` input inside Langflow, not in this app's `.env`. Transcription is the only non-IBM model in the stack; amount/item extraction and promo copy run on watsonx.ai Granite.
 
 The prompt must instruct the model to: (1) decide whether the transcript is a **closing-report phrase** (vendor announces the session is done and states a cash total) vs. an **ordinary transaction** (vendor states one order's price); (2) extract the Rupiah amount, handling market slang (`gocap` = 50,000, `goceng` = 5,000, `ceban` = 10,000, `cepek` = 100,000, etc.); (3) extract the item label if present; (4) return a confidence score; (5) reply with **only** the JSON object above, nothing else. A handful of few-shot examples covering a clean sale, a multi-item sale, a closing phrase, an ambiguous mumble, and non-transaction background chatter (`amount: null`) meaningfully improves accuracy.
 

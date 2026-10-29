@@ -29,7 +29,7 @@ The system compares **(2) vs (3)**: `varianceAmount = |voiceCashEstimate − clo
 | Feature | Status |
 |---|---|
 | Open/close session, zero forms | ✅ |
-| Voice price capture (mic active only while a session is open) | ✅ Langflow + watsonx.ai |
+| Voice price capture (mic active only while a session is open) | ✅ Langflow: Groq Whisper (speech-to-text) + watsonx.ai Granite (extraction) |
 | QRIS webhook (idempotent, HMAC-ready) + one-tap simulation for demos | ✅ |
 | Three-way reconciliation with a categorized breakdown card | ✅ |
 | Owner dashboard: FLAGGED banner, revenue summary, per-merchant filter | ✅ |
@@ -37,7 +37,7 @@ The system compares **(2) vs (3)**: `varianceAmount = |voiceCashEstimate − clo
 | Generative Promo — poster copy from real sales data | ✅ Langflow + watsonx.ai |
 | Monthly savings (10% suggestion, vendor confirm/decline) + history | ✅ |
 | Audit log — every agent decision recorded, shown on the dashboard | ✅ |
-| 5 watsonx Orchestrate agents (governance layer) | ✅ |
+| 5 watsonx Orchestrate agents (parallel governance layer, OpenAPI tools) | ✅ registered & tested Sep 2026; trial instance expired Oct 2026 |
 | PWA (Add to Home Screen) | ✅ |
 
 The one piece still simulated for demo purposes: QRIS payments use a one-tap simulation button rather than a live aggregator connection (Midtrans/Xendit/etc.). The real webhook endpoint is fully built and ready — see the `TODO` comments in `src/app/api/webhook/qris/route.ts`.
@@ -53,10 +53,13 @@ The one piece still simulated for demo purposes: QRIS payments use a one-tap sim
 
 | Layer | Technology |
 |---|---|
-| AI extraction & generation | **IBM watsonx.ai** (Granite), orchestrated via **Langflow** — 3 pipelines: Voice-to-Transaction, Radar Tetangga, Generative Promo |
-| Agent & governance layer | **IBM watsonx Orchestrate** — 5 agents (Listener, Payment-Event, Reconciliation, Radar Tetangga, Growth), OpenAPI-based tools |
+| Speech-to-text | **Whisper** (`whisper-large-v3-turbo`) via the Groq API, called from a Langflow custom component — the only non-IBM model in the stack |
+| AI extraction & generation | **IBM watsonx.ai** (`ibm/granite-4-h-small`), orchestrated via **Langflow** — 3 pipelines: Voice-to-Transaction, Radar Tetangga (deterministic Python, no LLM), Generative Promo |
+| Agent & governance layer | **IBM watsonx Orchestrate** — 5 agents (Listener, Payment-Event, Reconciliation, Radar Tetangga, Growth) as a parallel layer: OpenAPI tools call the same API endpoints and the Payment-Event agent reads the audit log. The app writes `AuditLog` itself, so the core flow does not depend on Orchestrate. Trial instance expired Oct 2026 (agents verified in screenshots, 13 Sep 2026). |
 | Application | Next.js 14 (App Router) + TypeScript, Tailwind CSS |
 | Data | Prisma ORM + SQLite (Turso/libSQL in production) |
+
+The three Langflow flows (sanitized exports), their prompts, and the custom-component code are in [`langflow/`](./langflow/README.md).
 
 Next.js was chosen so one repo runs both the frontend and the API without a separate backend — realistic for a small team on a tight timeline.
 
