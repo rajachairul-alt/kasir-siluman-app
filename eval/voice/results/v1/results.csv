@@ -1,0 +1,56 @@
+key,speaker,id,kelas,kondisi,ucapan,harapan_nominal,harapan_tutup_buku,transkrip,pipeline_nominal,pipeline_tutup_buku,confidence,item,pipeline_benar,baseline_nominal,baseline_tutup_buku,baseline_benar,ms
+raja__B01,raja,B01,angka-lengkap,bising,Es teh lima ribu,5000,0,Estekli Maríku.,,0,0,,0,,0,0,31256
+raja__B03,raja,B03,angka-lengkap,bising,Mie ayam lima belas ribu,15000,0,Mér alam lima blessur í þiggin.,,0,0,,0,5000,0,0,38675
+raja__B04,raja,B04,istilah-pasar,bising,Nasi bungkus goceng,5000,0,"Naci, bungkus, kocen",,0,0,,0,,0,0,42678
+raja__B07,raja,B07,ratusan-setengah,bising,Teh tarik tiga ribu lima ratus,3500,0,eh tarik 3500,3500,0,0.9,,1,3500,0,1,101628
+raja__B11,raja,B11,tutup-buku,bising,"Tutup buku, totalnya tiga ratus empat puluh ribu",340000,1,Ketop buku totalnya Rp340.000,340000,1,1,,1,340000,1,1,46198
+raja__B13,raja,B13,bukan-transaksi,bising,Hujan deras dari tadi siang,,0,Hidang beras dari kajus siang,,0,0,,1,,0,1,14131
+raja__B14,raja,B14,bukan-transaksi,bising,Kemarin bensin naik dua ribu,,0,"Amarin fengstum, na, geri bing.",,0,0,,1,,0,1,22553
+raja__P02,raja,P02,angka-lengkap,tenang,Bakso dua puluh lima ribu,25000,0,bakso dua puluh lima ribu,25000,0,0.9,bakso,1,25000,0,1,12985
+raja__P03,raja,P03,angka-lengkap,tenang,Nasi goreng delapan belas ribu,18000,0,Nasi goreng 18 ribu.,18000,0,0.9,nasi goreng,1,18000,0,1,10094
+raja__P04,raja,P04,angka-lengkap,tenang,Mie ayam lima belas ribu,15000,0,mi ayam lima belas ribu,15000,0,0.9,mi ayam,1,15000,0,1,8734
+raja__P05,raja,P05,angka-lengkap,tenang,Gorengan dua ribu,2000,0,Gorengan 2000,2000,0,1,gorengan,1,2000,0,1,24738
+raja__P06,raja,P06,angka-lengkap,tenang,Kopi hitam tiga ribu,3000,0,Kopi hitam tiga ribu.,3000,0,0.9,kopi hitam,1,3000,0,1,20857
+raja__P07,raja,P07,angka-lengkap,tenang,Sate ayam tiga puluh ribu,30000,0,sate ayam tiga puluh ribu,30000,0,0.9,sate ayam,1,30000,0,1,52986
+raja__P08,raja,P08,angka-lengkap,tenang,Martabak telur empat puluh lima ribu,45000,0,Martabak telur Rp45.000.,45000,0,1,martabak telur,1,45000,0,1,11102
+raja__P09,raja,P09,angka-lengkap,tenang,Soto ayam dua puluh dua ribu,22000,0,soto ayam dua puluh dua ribu,22000,0,0.9,soto ayam,1,22000,0,1,15346
+raja__P10,raja,P10,angka-lengkap,tenang,Air mineral empat ribu,4000,0,Air mineral 4.000,4000,0,1,Air mineral,1,4000,0,1,12037
+raja__P12,raja,P12,istilah-pasar,tenang,Es kelapa ceban,10000,0,Eskelapa jepen,,0,0,,0,,0,0,82717
+raja__P13,raja,P13,istilah-pasar,tenang,Kerupuk seceng,1000,0,kerobok seceng,1000,0,0.9,seceng,1,1000,0,1,17271
+raja__P14,raja,P14,istilah-pasar,tenang,Martabak manis noban,20000,0,Martabak Manis Nalban,,0,0,,0,,0,0,19128
+raja__P15,raja,P15,istilah-pasar,tenang,Es batu noceng,2000,0,es batu nocek,9000,0,0.9,es batu,0,,0,0,14461
+raja__P17,raja,P17,istilah-pasar,tenang,Nasi kotak gocap,50000,0,nasi kotak gocak,,0,0.8,nasi kotak,0,,0,0,23421
+raja__P19,raja,P19,ratusan-setengah,tenang,Teh tarik tiga ribu lima ratus,3500,0,teh tarik tiga libu rima ratus,37500,0,0.9,,0,100000,0,0,56911
+raja__P20,raja,P20,ratusan-setengah,tenang,Cilok seribu lima ratus,1500,0,cilok seribu lima radus,,0,0,,0,1005,0,0,26309
+raja__P21,raja,P21,ratusan-setengah,tenang,Es campur tujuh setengah,7500,0,es campur tujuh setengah,,0,0,,0,7500,0,1,15525
+raja__P22,raja,P22,ratusan-setengah,tenang,Pisang goreng dua ribu lima ratus,2500,0,pisang goreng dua ribu lima ratus,2500,0,0.9,pisang goreng,1,2500,0,1,41473
+raja__P23,raja,P23,ratusan-setengah,tenang,Nasi uduk dua belas ribu lima ratus,12500,0,nasi udhuk dua belas ribu lima ratus,12500,0,0.9,nasi udhuk,1,12500,0,1,92632
+raja__P24,raja,P24,tanpa-kata-ribu,tenang,Ayam geprek dua puluh,20000,0,Ayam Geprek 20,20000,0,0.9,Ayam Geprek,1,20000,0,1,9031
+raja__P25,raja,P25,tanpa-kata-ribu,tenang,Kopi susu dua belas,12000,0,Kopi susu dua pulas,10000,0,0.9,kopi susu,0,2000,0,0,9380
+raja__P26,raja,P26,tanpa-kata-ribu,tenang,Nasi kuning lima belas,15000,0,Nasi kuning 15,15000,0,0.9,nasi kuning,1,15000,0,1,8074
+raja__P27,raja,P27,tanpa-kata-ribu,tenang,Bakso urat dua lima,25000,0,Pak surat dua lima,25000,0,0.9,,1,5000,0,0,18440
+raja__P28,raja,P28,kali-jumlah,tenang,"Es teh tiga, masing-masing lima ribu",15000,0,ST3 masing-masing 5.000,5000,0,0.9,ST3,0,5000,0,0,54897
+raja__P32,raja,P32,kali-jumlah,tenang,"Kopi dua, tiga ribuan",6000,0,Kopi dua tiga ribuan.,3000,0,0.9,kopi,0,3000,0,0,12764
+raja__P33,raja,P33,nominal-besar,tenang,"Nasi kotak dua puluh porsi, totalnya tiga ratus ribu",300000,0,"Nasi kotak dua puluh porsi, totalnya tiga ratus ribu.",300000,0,0.9,nasi kotak,1,300000,1,0,10172
+raja__P34,raja,P34,nominal-besar,tenang,Tumpeng seratus dua puluh ribu,120000,0,Tumpung seratus dua puluh ribu,122000,1,0.9,,0,120000,0,1,9697
+raja__P35,raja,P35,nominal-besar,tenang,Kue pesanan dua ratus lima puluh ribu,250000,0,kue pesanan dua ratus lima puluh ribu,250000,0,0.9,kue,1,250000,0,1,11455
+raja__P36,raja,P36,tutup-buku,tenang,"Tutup buku, totalnya tiga ratus empat puluh ribu",340000,1,"Tutup buku, totalnya 340 ribu.",340000,1,0.9,,1,340000,1,1,28012
+raja__P37,raja,P37,tutup-buku,tenang,"Udah selesai, hari ini dapat dua ratus ribu",200000,1,"Udah selesai, hari ini dapat 200 ribu",200000,1,0.9,,1,200000,1,1,19786
+raja__P42,raja,P42,bukan-transaksi,tenang,Hujan deras dari tadi siang,,0,"Hujan deras, Tadu Sian",,0,0,,1,,0,1,39828
+raja__P43,raja,P43,bukan-transaksi,tenang,"Mas, tolong ambilin plastik",,0,Mas tolong ambilin plastik.,,0,0,,1,,0,1,11745
+raja__P44,raja,P44,bukan-transaksi,tenang,Besok saya libur dagang,,0,besok saya libur dagang,,0,0,,1,,0,1,10196
+raja__P45,raja,P45,bukan-transaksi,tenang,Kemarin bensin naik dua ribu,,0,Kemarin bensin naik 2.000.000.,,0,0,,1,2000000,0,0,8889
+raja__P46,raja,P46,bukan-transaksi,tenang,"Tutup dulu payungnya, mau hujan",,0,tutup dulu payungnya mau hujan,,1,0,,0,,1,0,30831
+raja__B10,raja,B10,kali-jumlah,bising,"Bakso dua mangkok, semangkok lima belas ribu",30000,0,"Pak, selalu tua man kok, lima plus lukis.",,0,0,,0,5000,0,0,31301
+raja__B12,raja,B12,tutup-buku,bising,"Segitu aja hari ini, total lima ratus dua puluh ribu",520000,1,"Gitu Eka Harini, að kalli maratu, keupulihrisu.",,0,0,,0,,0,0,31761
+raja__P01,raja,P01,angka-lengkap,tenang,Es teh lima ribu,5000,0,ST 5000,5000,0,0.9,ST,1,5000,0,1,26590
+raja__P11,raja,P11,istilah-pasar,tenang,Nasi bungkus goceng,5000,0,Nasi bungkus goceng,5000,0,0.9,nasi bungkus,1,5000,0,1,22150
+raja__P16,raja,P16,istilah-pasar,tenang,Ayam bakar sepaket goban,50000,0,ayam bakar sepaket goban,,0,0,,0,50000,0,1,9856
+raja__P18,raja,P18,istilah-pasar,tenang,Durian satu biji cepek,100000,0,Durian satu biji cepek.,100000,0,0.9,durian,1,100000,0,1,9823
+raja__P29,raja,P29,kali-jumlah,tenang,Nasi bungkus goceng dua,10000,0,Nasi bungkus kojeng 2,20000,0,0.9,nasi bungkus,0,2000,0,0,9099
+raja__P30,raja,P30,kali-jumlah,tenang,"Bakso dua mangkok, semangkok lima belas ribu",30000,0,pak su dua mangkok semangkok lima belas ribu,15000,0,0.9,semangkok,0,15000,0,0,9822
+raja__P31,raja,P31,kali-jumlah,tenang,"Gorengan lima biji, seribuan",5000,0,Gorengan lima biji seribuan,5000,0,0.9,gorengan,1,1000,0,0,5919
+raja__P38,raja,P38,tutup-buku,tenang,"Segitu aja hari ini, total lima ratus dua puluh ribu",520000,1,segitu aja hari ini total 520.000,520000,1,0.9,,1,520000,1,1,6954
+raja__P39,raja,P39,tutup-buku,tenang,"Tutup, uang tunai empat ratus lima belas ribu",415000,1,Tutup uang tunai Rp415.000.,415000,1,0.9,,1,415000,1,1,8240
+raja__P40,raja,P40,tutup-buku,tenang,Total hari ini satu juta dua ratus ribu,1200000,1,Total hari ini 1.200.000,1200000,1,1,,1,1200000,1,1,8128
+raja__P41,raja,P41,tutup-buku,tenang,"Tutup buku, dapat tujuh ratus lima puluh ribu",750000,1,Toto buku dapat 750 ribu.,750000,1,0.9,,1,750000,0,0,9460

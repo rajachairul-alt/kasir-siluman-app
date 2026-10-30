@@ -49,6 +49,16 @@ The one piece still simulated for demo purposes: QRIS payments use a one-tap sim
 - **Governance that actually runs**: `AuditLog` entries are written directly from the API code path (not dependent on the Orchestrate agents being invoked), so the decision trail survives even if one layer fails.
 - **Resilience by design**: calls into Langflow (which occasionally hit transient connection resets talking to watsonx.ai's cloud endpoint) are wrapped in automatic retry — see `src/lib/langflowRun.ts`.
 
+## Voice accuracy (measured)
+
+[`eval/voice/`](eval/voice/README.md) runs recorded utterances through the same Langflow flow the app calls, and compares the result with a regex + slang-dictionary baseline applied to the same Whisper transcript. First run (v1, 30 Oct 2026): 55 recordings from one speaker reading the script in `phrases.csv`, not real merchant transactions.
+
+| | Pipeline (Whisper + Granite) | Regex baseline |
+|---|---|---|
+| Fully correct (amount and utterance type) | **35/55 (64%)**, 95% CI 50–75% | 33/55 (60%) |
+
+Strong on spelled-out amounts (83%) and closing phrases (88%); weak on market slang (33%), quantity × price (17%) and noisy audio (44%). About half of the errors are mishearing by speech-to-text, the rest are misreadings of a correct transcript (e.g. the prompt's slang dictionary maps *noceng* to 9,000 instead of 2,000). The model's `confidence` is not calibrated yet: every amount it returned scored ≥ 0.9, including 8 wrong ones. Five noisy recordings failed to process and are not counted. Full breakdown: [`eval/voice/results/v1/summary.md`](eval/voice/results/v1/summary.md).
+
 ## Tech stack (IBM-first)
 
 | Layer | Technology |
