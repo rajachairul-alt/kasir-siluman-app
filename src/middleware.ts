@@ -1,43 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getAuth, isSignedIn } from "@/lib/auth";
 
-// Gerbang login sederhana berbasis PIN (lihat src/app/login dan
-// src/app/owner-login). Ini BUKAN sistem auth enterprise — cukup untuk
-// memisahkan sesi antar pedagang dan menjaga /dashboard dari akses publik
-// tanpa PIN pemilik.
+// First gate for every protected page and API route. Sessions are signed
+// httpOnly cookies set by /api/auth/pedagang and /api/auth/pemilik (see
+// src/lib/auth.ts), so a hand-made cookie in DevTools no longer gets in.
 //
-// Cookie diset dari sisi client (document.cookie) setelah PIN diverifikasi
-// oleh /api/auth/pedagang atau /api/auth/pemilik, jadi middleware ini cukup
-// mengecek keberadaan & nilai cookie tanpa perlu query database.
+// - /session needs a pedagang session, /dashboard an owner session.
+// - /api/* needs either session, except the login routes and the
+//   server-to-server routes that check their own shared secret.
+// API routes still check per-merchant ownership themselves.
 
-const MERCHANT_COOKIE = "ks_merchant_id";
-const OWNER_COOKIE = "ks_owner";
+const OPEN_API = [/^\/api\/auth\//, /^\/api\/webhook\//, /^\/api\/internal\//];
 
-export function middleware(req: NextRequest) {
+export async function middleware(req: NextRequest) {
   const { pathname } = req.nextUrl;
 
-  if (pathname.startsWith("/session")) {
-    const merchantId = req.cookies.get(MERCHANT_COOKIE)?.value;
-    if (!merchantId) {
-      const url = req.nextUrl.clone();
-      url.pathname = "/login";
-      url.searchParams.set("next", pathname);
-      return NextResponse.redirect(url);
-    }
+  if (pathname.startsWith("/api/")) {
+    if (OPEN_API.some((r) => r.test(pathname))) return NextResponse.next();
+    if (isSignedIn(await getAuth(req))) return NextResponse.next();
+    return NextResponse.json({ error: "Silakan login dulu." }, { status: 401 });
   }
 
-  if (pathname.startsWith("/dashboard")) {
-    const owner = req.cookies.get(OWNER_COOKIE)?.value;
-    if (owner !== "1") {
-      const url = req.nextUrl.clone();
-      url.pathname = "/owner-login";
-      url.searchParams.set("next", pathname);
-      return NextResponse.redirect(url);
-    }
-  }
+  const auth = await getAuth(req);
+  const loginPage = pathname.startsWith("/dashboard")
+    ? auth.owner ? null : "/owner-login"
+    : auth.merchantId ? null : "/login";
+  if (!loginPage) return NextResponse.next();
 
-  return NextResponse.next();
+  const url = req.nextUrl.clone();
+  url.pathname = loginPage;
+  url.search = "";
+  url.searchParams.set("next", pathname);
+  return NextResponse.redirect(url);
 }
 
 export const config = {
-  matcher: ["/session/:path*", "/dashboard/:path*"],
+  matcher: ["/session/:path*", "/dashboard/:path*", "/api/:path*"],
 };

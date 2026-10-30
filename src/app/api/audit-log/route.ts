@@ -1,11 +1,11 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { forbidden, getAuth } from "@/lib/auth";
 
 // GET /api/audit-log
 //
-// Public (no shared secret) read-only proxy over the AuditLog table —
-// safe for the browser / dashboard to call directly because it returns
-// only summary data (no raw payloads, no PII) and is read-only.
+// Read-only view of the AuditLog table for the owner dashboard (owner
+// session required). Returns summary data only — no raw payloads, no PII.
 //
 // Separation from /api/internal/audit-log mirrors the pattern already
 // established by /api/internal/item-prices (internal, secret-protected,
@@ -20,6 +20,7 @@ const DEFAULT_LIMIT = 20;
 const MAX_LIMIT = 100;
 
 export async function GET(req: NextRequest) {
+  if (!(await getAuth(req)).owner) return forbidden();
   const { searchParams } = req.nextUrl;
   const merchantId = searchParams.get("merchantId") ?? undefined;
   const rawLimit = parseInt(searchParams.get("limit") ?? String(DEFAULT_LIMIT), 10);

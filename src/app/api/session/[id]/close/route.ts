@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { canAccessMerchant, getAuth } from "@/lib/auth";
 import { reconcileSession } from "@/lib/reconciliation";
 import { writeAuditLog } from "@/lib/auditLog";
 
@@ -30,7 +31,7 @@ export async function POST(
     where: { id: params.id },
     include: { transactions: true },
   });
-  if (!session) {
+  if (!session || !canAccessMerchant(await getAuth(req), session.merchantId)) {
     return NextResponse.json({ error: "Sesi tidak ditemukan" }, { status: 404 });
   }
   if (session.status !== "OPEN") {

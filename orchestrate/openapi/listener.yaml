@@ -15,6 +15,8 @@ info:
 servers:
   - url: "https://kasir-siluman-app.vercel.app"
 
+security:
+  - internalSecret: []
 paths:
   /api/voice/extract:
     post:
@@ -63,6 +65,11 @@ paths:
                 $ref: "#/components/schemas/ErrorResponse"
 
 components:
+  securitySchemes:
+    internalSecret:
+      type: apiKey
+      in: header
+      name: x-orchestrate-internal-secret
   schemas:
     VoiceExtractionResult:
       type: object

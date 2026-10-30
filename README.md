@@ -104,8 +104,10 @@ Note on naming: `SavingsProposal.netProfit` is actually a **recorded-revenue pro
 | `GET /api/promo/context` · `POST /api/promo/generate` | Aggregate recent sales → Langflow Generative Promo → poster copy |
 | `GET /api/savings` · `POST /api/savings/generate` · `POST /api/savings/:id/confirm`/`decline` | Monthly savings proposal lifecycle |
 | `GET /api/ledger` | Dashboard data source: closed sessions + merchant list |
-| `GET /api/audit-log` | Public read-only governance log |
+| `GET /api/audit-log` | Read-only governance log for the owner dashboard |
 | `GET/POST /api/internal/audit-log` · `GET /api/internal/item-prices` | Internal, shared-secret, server-to-server only |
+
+**Access control.** Pedagang log in with a per-merchant PIN (stored as a scrypt hash), the owner with `OWNER_PIN`. The server answers with a signed, httpOnly session cookie (HMAC-SHA256, `SESSION_SECRET`, 12 hours), and `src/middleware.ts` rejects every page and `/api/*` call without a valid one; only the login routes, the QRIS webhook and the `internal` routes are reachable without it, and those check their own shared secret. A pedagang session only reaches its own merchant's sessions, transactions and savings; ledger, audit log and savings generation are owner-only. Five wrong PINs lock that account for 15 minutes (20 per IP), tracked in Turso so the limit holds across Vercel instances. Not built yet: per-owner accounts and 2FA (planned via Google Sign-In).
 
 ## Running locally
 

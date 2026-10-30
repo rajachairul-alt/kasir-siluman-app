@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getAuth, isSignedIn, unauthorized } from "@/lib/auth";
 import type { VoiceExtractionResult } from "@/lib/voiceToTransaction";
 import { runLangflowFlow, extractJsonArtifact } from "@/lib/langflowRun";
 
@@ -76,6 +77,8 @@ function toVoiceExtractionResult(raw: unknown): VoiceExtractionResult {
 }
 
 export async function POST(req: NextRequest) {
+  if (!isSignedIn(await getAuth(req))) return unauthorized();
+
   let baseUrl: string;
   let flowId: string;
   let apiKey: string;

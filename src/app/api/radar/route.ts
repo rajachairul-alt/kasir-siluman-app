@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getAuth, isSignedIn, unauthorized } from "@/lib/auth";
 import type { NeighborhoodPricing } from "@/lib/radarTetangga";
 import { runLangflowFlow, extractJsonArtifact } from "@/lib/langflowRun";
 
@@ -28,6 +29,8 @@ function getRequiredEnv(name: string): string {
 const AGGREGATOR_DISPLAY_NAME = "Radar Tetangga Aggregator";
 
 export async function POST(req: NextRequest) {
+  if (!isSignedIn(await getAuth(req))) return unauthorized();
+
   let baseUrl: string;
   let flowId: string;
   let apiKey: string;

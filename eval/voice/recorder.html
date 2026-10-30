@@ -1,0 +1,180 @@
+<!doctype html>
+<html lang="id">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Perekam Uji Suara</title>
+<style>
+  :root { --ink: #0f1b2d; --muted: #5b6b7f; --line: #d9e0e8; --bg: #f5f7fa; --teal: #0d7a6f; --red: #c62828; --orange: #b45309; }
+  * { box-sizing: border-box; }
+  body { margin: 0; font: 16px/1.5 system-ui, -apple-system, "Segoe UI", sans-serif; color: var(--ink); background: var(--bg); }
+  main { max-width: 760px; margin: 0 auto; padding: 24px 16px 48px; }
+  h1 { font-size: 20px; margin: 0 0 4px; }
+  .muted { color: var(--muted); font-size: 14px; }
+  .card { background: #fff; border: 1px solid var(--line); border-radius: 14px; padding: 20px; margin-top: 16px; }
+  label { font-weight: 600; font-size: 14px; }
+  input { font: inherit; padding: 8px 10px; border: 1px solid var(--line); border-radius: 8px; width: 200px; }
+  button { font: inherit; font-weight: 600; border: 0; border-radius: 10px; padding: 12px 18px; cursor: pointer; background: #e8edf3; color: var(--ink); }
+  button:disabled { opacity: .4; cursor: default; }
+  button:focus-visible { outline: 3px solid #7aa7ff; outline-offset: 2px; }
+  .primary { background: var(--teal); color: #fff; }
+  .rec { background: var(--red); color: #fff; min-width: 170px; }
+  .meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; font-size: 14px; }
+  .chip { border: 1px solid var(--line); border-radius: 999px; padding: 2px 10px; }
+  .chip.bising { border-color: var(--orange); color: var(--orange); font-weight: 600; }
+  .say { font-size: 30px; font-weight: 700; line-height: 1.25; margin: 14px 0 6px; }
+  .hint { font-size: 14px; color: var(--orange); min-height: 21px; }
+  .row { display: flex; gap: 10px; flex-wrap: wrap; align-items: center; margin-top: 16px; }
+  audio { width: 100%; margin-top: 14px; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(52px, 1fr)); gap: 6px; margin-top: 12px; }
+  .grid button { padding: 6px 0; font-size: 13px; font-weight: 500; border-radius: 8px; }
+  .grid .done { background: #d6f0ec; color: var(--teal); }
+  .grid .now { outline: 2px solid var(--ink); }
+  .status { font-size: 14px; margin-top: 10px; min-height: 21px; }
+  kbd { border: 1px solid var(--line); border-bottom-width: 2px; border-radius: 4px; padding: 0 5px; font-size: 12px; background: #fff; }
+</style>
+</head>
+<body>
+<main>
+  <h1>Perekam Uji Akurasi Suara</h1>
+  <p class="muted">Ucapkan kalimat seperti sedang melayani pembeli. Gaya bicara boleh santai, tapi nominalnya harus sama dengan teks. Rekaman disimpan ke <code>eval/voice/recordings/</code> di laptop ini saja.</p>
+
+  <div class="card" id="setup">
+    <label for="speaker">Nama penutur (huruf kecil, tanpa spasi)</label>
+    <div class="row" style="margin-top:8px">
+      <input id="speaker" placeholder="raja" autocomplete="off" pattern="[a-z0-9-]{1,20}">
+      <button class="primary" id="start">Mulai</button>
+    </div>
+    <p class="status" id="setupStatus" role="status"></p>
+  </div>
+
+  <div class="card" id="studio" hidden>
+    <div class="meta">
+      <strong id="pid"></strong>
+      <span class="chip" id="kelas"></span>
+      <span class="chip" id="kondisi"></span>
+      <span class="muted" id="progress"></span>
+    </div>
+    <div class="say" id="say"></div>
+    <div class="hint" id="hint"></div>
+    <div class="row">
+      <button class="rec" id="recBtn">● Rekam</button>
+      <button class="primary" id="saveBtn" disabled>Simpan &amp; lanjut</button>
+      <button id="redoBtn" disabled>Ulangi</button>
+      <button id="prevBtn">‹ Sebelumnya</button>
+      <button id="nextBtn">Lewati ›</button>
+    </div>
+    <audio id="player" controls hidden></audio>
+    <p class="status" id="status" role="status"></p>
+    <p class="muted"><kbd>Spasi</kbd> rekam/berhenti · <kbd>Enter</kbd> simpan · <kbd>R</kbd> ulangi</p>
+    <div class="grid" id="grid"></div>
+  </div>
+</main>
+<script>
+const $ = (id) => document.getElementById(id);
+let phrases = [], done = new Set(), idx = 0, speaker = "", stream = null, recorder = null, chunks = [], blob = null, startedAt = 0;
+const MIMES = [["audio/webm;codecs=opus", "webm"], ["audio/ogg;codecs=opus", "ogg"], ["audio/mp4", "m4a"]];
+const [mime, ext] = MIMES.find(([m]) => window.MediaRecorder && MediaRecorder.isTypeSupported(m)) || ["", "webm"];
+
+async function loadState() {
+  const s = await (await fetch("/state")).json();
+  phrases = s.phrases; done = new Set(s.done);
+}
+
+$("start").onclick = async () => {
+  speaker = $("speaker").value.trim().toLowerCase();
+  if (!/^[a-z0-9-]{1,20}$/.test(speaker)) { $("setupStatus").textContent = "Pakai huruf kecil, angka, atau tanda minus (maks. 20 karakter)."; return; }
+  try {
+    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+  } catch (e) {
+    $("setupStatus").textContent = "Mikrofon tidak bisa dibuka: " + e.message; return;
+  }
+  await loadState();
+  const firstTodo = phrases.findIndex((p) => !done.has(speaker + "__" + p.id));
+  idx = firstTodo === -1 ? 0 : firstTodo;
+  $("setup").hidden = true; $("studio").hidden = false;
+  show();
+};
+
+function show() {
+  const p = phrases[idx];
+  $("pid").textContent = p.id;
+  $("kelas").textContent = p.kelas;
+  $("kondisi").textContent = p.kondisi;
+  $("kondisi").className = "chip " + p.kondisi;
+  $("say").textContent = p.ucapan;
+  $("hint").textContent = p.kondisi === "bising"
+    ? "Kondisi bising: putar suara keramaian pasar dari HP di dekat laptop dengan volume sedang, lalu bicara dengan suara normal."
+    : (p.catatan ? "Catatan: " + p.catatan : "");
+  const n = phrases.filter((x) => done.has(speaker + "__" + x.id)).length;
+  $("progress").textContent = `${n}/${phrases.length} tersimpan untuk ${speaker}`;
+  resetTake();
+  $("grid").replaceChildren(...phrases.map((x, i) => {
+    const b = document.createElement("button");
+    b.textContent = x.id;
+    b.className = (done.has(speaker + "__" + x.id) ? "done " : "") + (i === idx ? "now" : "");
+    b.title = x.ucapan;
+    b.onclick = () => { if (!isRecording()) { idx = i; show(); } };
+    return b;
+  }));
+}
+
+const isRecording = () => recorder && recorder.state === "recording";
+
+function resetTake() {
+  blob = null;
+  $("player").hidden = true; $("player").removeAttribute("src");
+  $("saveBtn").disabled = true; $("redoBtn").disabled = true;
+  $("recBtn").textContent = "● Rekam";
+  $("status").textContent = done.has(speaker + "__" + phrases[idx].id) ? "Sudah tersimpan. Rekam lagi kalau ingin mengganti." : "";
+}
+
+function toggleRecord() {
+  if (isRecording()) { recorder.stop(); return; }
+  chunks = [];
+  recorder = new MediaRecorder(stream, mime ? { mimeType: mime } : undefined);
+  recorder.ondataavailable = (e) => e.data.size && chunks.push(e.data);
+  recorder.onstop = () => {
+    $("recBtn").textContent = "● Rekam";
+    if (Date.now() - startedAt < 500) { $("status").textContent = "Terlalu pendek, coba lagi."; return; }
+    blob = new Blob(chunks, { type: recorder.mimeType || mime });
+    $("player").src = URL.createObjectURL(blob); $("player").hidden = false;
+    $("saveBtn").disabled = false; $("redoBtn").disabled = false;
+    $("status").textContent = "Dengarkan dulu kalau perlu, lalu Simpan.";
+  };
+  recorder.start(); startedAt = Date.now();
+  $("recBtn").textContent = "■ Berhenti";
+  $("status").textContent = "Merekam…";
+  $("saveBtn").disabled = true; $("redoBtn").disabled = true; $("player").hidden = true;
+}
+
+async function save() {
+  if (!blob) return;
+  const p = phrases[idx];
+  $("saveBtn").disabled = true;
+  const res = await fetch(`/save?speaker=${speaker}&id=${p.id}&ext=${ext}`, { method: "POST", body: blob }).catch(() => null);
+  if (!res || !res.ok) { $("status").textContent = "Gagal menyimpan. Pastikan perintah record masih berjalan."; $("saveBtn").disabled = false; return; }
+  done.add(speaker + "__" + p.id);
+  const next = phrases.findIndex((x, i) => i > idx && !done.has(speaker + "__" + x.id));
+  if (next !== -1) idx = next;
+  else if (phrases.every((x) => done.has(speaker + "__" + x.id))) { show(); $("status").textContent = "Semua kalimat sudah tersimpan. Tutup halaman ini lalu jalankan: node eval/voice/voice_eval.mjs run"; return; }
+  show();
+}
+
+$("recBtn").onclick = toggleRecord;
+$("saveBtn").onclick = save;
+$("redoBtn").onclick = () => { resetTake(); toggleRecord(); };
+$("prevBtn").onclick = () => { if (!isRecording() && idx > 0) { idx--; show(); } };
+$("nextBtn").onclick = () => { if (!isRecording() && idx < phrases.length - 1) { idx++; show(); } };
+// shortcuts must not also "click" whichever button happens to have focus
+document.addEventListener("keyup", (e) => { if (!$("studio").hidden && e.code === "Space") e.preventDefault(); });
+document.addEventListener("keydown", (e) => {
+  if ($("studio").hidden || e.target.tagName === "INPUT" || e.repeat) return;
+  if (e.code === "Space" || e.key === "Enter") document.activeElement?.blur();
+  if (e.code === "Space") { e.preventDefault(); toggleRecord(); }
+  else if (e.key === "Enter") { e.preventDefault(); save(); }
+  else if (e.key === "r" || e.key === "R") { if (!isRecording()) { resetTake(); toggleRecord(); } }
+});
+</script>
+</body>
+</html>

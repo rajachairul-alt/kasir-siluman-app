@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getAuth } from "@/lib/auth";
 import { writeAuditLog } from "@/lib/auditLog";
 
 // POST /api/savings/:id/confirm
@@ -11,11 +12,12 @@ import { writeAuditLog } from "@/lib/auditLog";
 // No request body needed — the action is fully described by the URL.
 
 export async function POST(
-  _req: NextRequest,
+  req: NextRequest,
   { params }: { params: { id: string } }
 ) {
   const proposal = await db.savingsProposal.findUnique({ where: { id: params.id } });
-  if (!proposal) {
+  // Only the merchant the proposal belongs to may decide on it.
+  if (!proposal || (await getAuth(req)).merchantId !== proposal.merchantId) {
     return NextResponse.json({ error: "Proposal tidak ditemukan" }, { status: 404 });
   }
   if (proposal.status !== "PENDING_SELLER_CONFIRMATION") {

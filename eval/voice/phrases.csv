@@ -1,0 +1,61 @@
+id,kelas,kondisi,ucapan,nominal,tutup_buku,catatan
+P01,angka-lengkap,tenang,Es teh lima ribu,5000,0,
+P02,angka-lengkap,tenang,Bakso dua puluh lima ribu,25000,0,
+P03,angka-lengkap,tenang,Nasi goreng delapan belas ribu,18000,0,
+P04,angka-lengkap,tenang,Mie ayam lima belas ribu,15000,0,
+P05,angka-lengkap,tenang,Gorengan dua ribu,2000,0,
+P06,angka-lengkap,tenang,Kopi hitam tiga ribu,3000,0,
+P07,angka-lengkap,tenang,Sate ayam tiga puluh ribu,30000,0,
+P08,angka-lengkap,tenang,Martabak telur empat puluh lima ribu,45000,0,
+P09,angka-lengkap,tenang,Soto ayam dua puluh dua ribu,22000,0,
+P10,angka-lengkap,tenang,Air mineral empat ribu,4000,0,
+P11,istilah-pasar,tenang,Nasi bungkus goceng,5000,0,
+P12,istilah-pasar,tenang,Es kelapa ceban,10000,0,
+P13,istilah-pasar,tenang,Kerupuk seceng,1000,0,
+P14,istilah-pasar,tenang,Martabak manis noban,20000,0,noban = 20 ribu
+P15,istilah-pasar,tenang,Es batu noceng,2000,0,noceng = 2 ribu
+P16,istilah-pasar,tenang,Ayam bakar sepaket goban,50000,0,goban = 50 ribu
+P17,istilah-pasar,tenang,Nasi kotak gocap,50000,0,makna pasar sekarang; arti harfiah Rp50
+P18,istilah-pasar,tenang,Durian satu biji cepek,100000,0,makna pasar sekarang; arti harfiah Rp100
+P19,ratusan-setengah,tenang,Teh tarik tiga ribu lima ratus,3500,0,
+P20,ratusan-setengah,tenang,Cilok seribu lima ratus,1500,0,
+P21,ratusan-setengah,tenang,Es campur tujuh setengah,7500,0,kata ribu tidak diucapkan
+P22,ratusan-setengah,tenang,Pisang goreng dua ribu lima ratus,2500,0,
+P23,ratusan-setengah,tenang,Nasi uduk dua belas ribu lima ratus,12500,0,
+P24,tanpa-kata-ribu,tenang,Ayam geprek dua puluh,20000,0,
+P25,tanpa-kata-ribu,tenang,Kopi susu dua belas,12000,0,
+P26,tanpa-kata-ribu,tenang,Nasi kuning lima belas,15000,0,
+P27,tanpa-kata-ribu,tenang,Bakso urat dua lima,25000,0,dua lima = dua puluh lima ribu
+P28,kali-jumlah,tenang,"Es teh tiga, masing-masing lima ribu",15000,0,
+P29,kali-jumlah,tenang,Nasi bungkus goceng dua,10000,0,contoh yang ada di prompt
+P30,kali-jumlah,tenang,"Bakso dua mangkok, semangkok lima belas ribu",30000,0,
+P31,kali-jumlah,tenang,"Gorengan lima biji, seribuan",5000,0,
+P32,kali-jumlah,tenang,"Kopi dua, tiga ribuan",6000,0,
+P33,nominal-besar,tenang,"Nasi kotak dua puluh porsi, totalnya tiga ratus ribu",300000,0,jebakan: ada kata totalnya tapi bukan tutup buku
+P34,nominal-besar,tenang,Tumpeng seratus dua puluh ribu,120000,0,
+P35,nominal-besar,tenang,Kue pesanan dua ratus lima puluh ribu,250000,0,
+P36,tutup-buku,tenang,"Tutup buku, totalnya tiga ratus empat puluh ribu",340000,1,
+P37,tutup-buku,tenang,"Udah selesai, hari ini dapat dua ratus ribu",200000,1,
+P38,tutup-buku,tenang,"Segitu aja hari ini, total lima ratus dua puluh ribu",520000,1,
+P39,tutup-buku,tenang,"Tutup, uang tunai empat ratus lima belas ribu",415000,1,
+P40,tutup-buku,tenang,Total hari ini satu juta dua ratus ribu,1200000,1,
+P41,tutup-buku,tenang,"Tutup buku, dapat tujuh ratus lima puluh ribu",750000,1,
+P42,bukan-transaksi,tenang,Hujan deras dari tadi siang,,0,
+P43,bukan-transaksi,tenang,"Mas, tolong ambilin plastik",,0,
+P44,bukan-transaksi,tenang,Besok saya libur dagang,,0,
+P45,bukan-transaksi,tenang,Kemarin bensin naik dua ribu,,0,jebakan: ada angka tapi bukan transaksi
+P46,bukan-transaksi,tenang,"Tutup dulu payungnya, mau hujan",,0,jebakan: ada kata tutup
+B01,angka-lengkap,bising,Es teh lima ribu,5000,0,
+B02,angka-lengkap,bising,Bakso dua puluh lima ribu,25000,0,
+B03,angka-lengkap,bising,Mie ayam lima belas ribu,15000,0,
+B04,istilah-pasar,bising,Nasi bungkus goceng,5000,0,
+B05,istilah-pasar,bising,Es kelapa ceban,10000,0,
+B06,istilah-pasar,bising,Es batu noceng,2000,0,noceng = 2 ribu
+B07,ratusan-setengah,bising,Teh tarik tiga ribu lima ratus,3500,0,
+B08,tanpa-kata-ribu,bising,Ayam geprek dua puluh,20000,0,
+B09,kali-jumlah,bising,"Es teh tiga, masing-masing lima ribu",15000,0,
+B10,kali-jumlah,bising,"Bakso dua mangkok, semangkok lima belas ribu",30000,0,
+B11,tutup-buku,bising,"Tutup buku, totalnya tiga ratus empat puluh ribu",340000,1,
+B12,tutup-buku,bising,"Segitu aja hari ini, total lima ratus dua puluh ribu",520000,1,
+B13,bukan-transaksi,bising,Hujan deras dari tadi siang,,0,
+B14,bukan-transaksi,bising,Kemarin bensin naik dua ribu,,0,jebakan: ada angka tapi bukan transaksi

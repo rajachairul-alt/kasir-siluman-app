@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { z } from "zod";
 import { db } from "@/lib/db";
+import { forbidden, getAuth } from "@/lib/auth";
 import { computeMonthlyRevenue, proposeMonthlySavings } from "@/lib/reconciliation";
 
 // POST /api/savings/generate
@@ -42,6 +43,7 @@ const generateSchema = z.object({
 });
 
 export async function POST(req: NextRequest) {
+  if (!(await getAuth(req)).owner) return forbidden();
   let body: unknown;
   try {
     body = await req.json();

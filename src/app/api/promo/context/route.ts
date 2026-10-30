@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { canAccessMerchant, getAuth } from "@/lib/auth";
 import type { PromoContext } from "@/lib/generativePromo";
 
 // GET /api/promo/context
@@ -52,6 +53,10 @@ export async function GET(req: NextRequest) {
     }
     resolvedMerchantId = merchant.id;
     merchantName = merchant.name;
+  }
+
+  if (!canAccessMerchant(await getAuth(req), resolvedMerchantId)) {
+    return NextResponse.json({ error: "Merchant tidak ditemukan" }, { status: 404 });
   }
 
   // ── Aggregate recent transactions ──────────────────────────────────────────

@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { getAuth, unauthorized } from "@/lib/auth";
 
 // GET /api/savings
 //
@@ -11,13 +12,15 @@ import { db } from "@/lib/db";
 //                summary card.
 //
 // Query params (all optional):
-//   merchantId  — filter to a single merchant
-//
-// Mirrors the optional-filter pattern of GET /api/ledger.
+//   merchantId  — filter to a single merchant (owner only; a signed-in
+//                 pedagang always gets just their own proposals)
 
 export async function GET(req: NextRequest) {
-  const { searchParams } = req.nextUrl;
-  const merchantId = searchParams.get("merchantId") ?? undefined;
+  const auth = await getAuth(req);
+  if (!auth.owner && !auth.merchantId) return unauthorized();
+  const merchantId = auth.owner
+    ? req.nextUrl.searchParams.get("merchantId") ?? undefined
+    : auth.merchantId!;
 
   const proposals = await db.savingsProposal.findMany({
     where: merchantId ? { merchantId } : undefined,

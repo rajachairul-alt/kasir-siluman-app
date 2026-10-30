@@ -22,7 +22,7 @@ Everything needed to run Kasir Siluman end to end: local setup, environment vari
 git clone <this-repo>
 cd kasir-siluman-app
 npm install
-cp .env.example .env
+cp .env.example .env   # then fill SESSION_SECRET (section 3)
 npm run db:push      # creates dev.db (SQLite) from prisma/schema.prisma
 npm run db:seed      # optional: sample data for the dashboard (3 sessions, 1 savings proposal, 5 audit log entries)
 npm run dev
@@ -39,6 +39,8 @@ Copy from `.env.example`. **Never commit `.env` with real values** — it's alre
 | Variable | Used by | Notes |
 |---|---|---|
 | `DATABASE_URL` | Always | `file:./dev.db` locally; replaced by a Turso libSQL URL in production (section 7). |
+| `SESSION_SECRET` | Login (`src/lib/auth.ts`) | At least 32 random characters; signs the httpOnly session cookies. Without it nobody can log in. Generate with `node -e "console.log(require('crypto').randomBytes(32).toString('base64url'))"`. |
+| `OWNER_PIN` | `/owner-login` | Owner PIN for `/dashboard`. Wrong PINs lock for 15 minutes after 5 tries. |
 | `QRIS_WEBHOOK_SECRET` | `/api/webhook/qris` | Matched against the `x-qris-webhook-secret` header. Change from the demo default before going live. |
 | `QRIS_WEBHOOK_HMAC_SECRET`, `QRIS_AGGREGATOR_BASE_URL` | Future QRIS webhook | Fill in once a real aggregator (Midtrans/Xendit/Duitku) is connected — see the `TODO` in `src/app/api/webhook/qris/route.ts`. |
 | `LANGFLOW_BASE_URL`, `LANGFLOW_API_KEY` | All 3 Langflow pipelines | Langflow instance URL and API key (Settings → Langflow API Keys). |
@@ -47,7 +49,7 @@ Copy from `.env.example`. **Never commit `.env` with real values** — it's alre
 | `LANGFLOW_PROMO_FLOW_ID`, `LANGFLOW_PROMO_PROMPT_TEMPLATE_COMPONENT_ID` | Generative Promo | Flow ID and the Prompt Template node's component ID — see section 4.3. |
 | `RADAR_INTERNAL_SECRET` | `/api/internal/item-prices` | Shared secret checked against `x-radar-internal-secret`. Called only by the Radar Tetangga Langflow component, server-to-server. Must also be set as a Langflow Global Variable of the same name. |
 | `WATSONX_ORCHESTRATE_BASE_URL`, `WATSONX_ORCHESTRATE_API_KEY` | Orchestrate console | Used when registering tools from the Orchestrate side — Next.js never calls Orchestrate; the direction is the reverse. |
-| `ORCHESTRATE_INTERNAL_SECRET` | `/api/internal/audit-log` | Shared secret checked against `x-orchestrate-internal-secret`. Must also be registered as a connection/credential in Orchestrate (section 5.5). |
+| `ORCHESTRATE_INTERNAL_SECRET` | `/api/internal/audit-log` and every Orchestrate tool call | Shared secret checked against `x-orchestrate-internal-secret`; with it, Orchestrate tools get owner-level API access. Must also be registered as a connection/credential in Orchestrate (section 5.1). |
 
 ---
 
@@ -261,6 +263,13 @@ Seed the production database (your local `db.ts` now points at Turso, so a local
 
 ```bash
 npm run db:seed
+```
+
+Then create the login-attempt table and hash the merchant PINs (safe to re-run; run it after every seed, since the seed writes plain PINs):
+
+```bash
+node scripts/secure-migrate.mjs
+node scripts/security-smoke.mjs https://<your-app>.vercel.app   # checks logins and API protection
 ```
 
 ### 7.6 Repoint the Orchestrate tools

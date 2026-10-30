@@ -1,13 +1,16 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 
-// Dev-only convenience so the demo doesn't need a separate onboarding flow:
+// Dev-only convenience (returns 404 in production) so the demo doesn't need a separate onboarding flow:
 // makes sure the demo merchant used by the /session page actually exists.
 // A real merchant sign-up flow is out of scope for the MVP (see BOB_BRIEF.md).
 
 const DEMO_MERCHANT_ID = "demo-merchant";
 
 export async function POST() {
+  if (process.env.NODE_ENV === "production") {
+    return NextResponse.json({ error: "Not found" }, { status: 404 });
+  }
   const merchant = await db.merchant.upsert({
     where: { id: DEMO_MERCHANT_ID },
     update: {},
@@ -18,5 +21,5 @@ export async function POST() {
     },
   });
 
-  return NextResponse.json(merchant);
+  return NextResponse.json({ id: merchant.id, name: merchant.name });
 }

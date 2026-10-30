@@ -17,8 +17,8 @@ model Merchant {
   id        String    @id @default(cuid())
   name      String
   cartType  String    @default("gerobak") // "gerobak" | "stand"
-  /// PIN 4-6 digit untuk login pedagang di /login. Bukan untuk data sensitif —
-  /// cukup untuk memisahkan sesi antar pedagang di demo/UMKM kecil.
+  /// PIN login pedagang di /login, disimpan sebagai hash scrypt (src/lib/pin.ts).
+  /// "0000" (default) selalu ditolak saat login.
   pin       String    @default("0000")
   createdAt DateTime  @default(now())
   sessions  Session[]
@@ -89,4 +89,16 @@ model AuditLog {
   merchantId String?
   detail     String?  // short summary only — no raw payloads or PII
   createdAt  DateTime @default(now())
+}
+
+/// Failed PIN logins, read by src/lib/loginGuard.ts to lock brute-force
+/// attempts. Created on Turso by scripts/secure-migrate.mjs.
+model LoginAttempt {
+  id        String   @id @default(cuid())
+  account   String   // "pedagang:<merchantId>" or "pemilik"
+  ip        String
+  createdAt DateTime @default(now())
+
+  @@index([account, createdAt])
+  @@index([ip, createdAt])
 }

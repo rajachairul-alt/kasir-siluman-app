@@ -18,3 +18,4 @@ BOB_TASK_*.md
 
 # python
 __pycache__/
+eval/voice/recordings/

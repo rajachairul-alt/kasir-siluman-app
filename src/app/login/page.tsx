@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { IBM_Plex_Sans } from "next/font/google";
 import { Storefront } from "@phosphor-icons/react";
 import TiltCard from "@/components/TiltCard";
+import { safeNextPath } from "@/lib/safeNext";
 
 // Scoped to this page only (same choice as the other pages) — not applied
 // globally in layout.tsx.
@@ -30,7 +31,7 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/session";
+  const next = safeNextPath(searchParams.get("next"), "/session");
 
   const [merchants, setMerchants] = useState<Merchant[]>([]);
   const [merchantId, setMerchantId] = useState("");
@@ -66,8 +67,7 @@ function LoginForm() {
         setLoading(false);
         return;
       }
-      document.cookie = `ks_merchant_id=${data.merchantId}; path=/; max-age=${60 * 60 * 12}`;
-      document.cookie = `ks_merchant_name=${encodeURIComponent(data.merchantName)}; path=/; max-age=${60 * 60 * 12}`;
+      // The server already set the signed session cookie (httpOnly).
       router.push(next);
       router.refresh();
     } catch {

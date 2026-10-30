@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
+import { getAuth, isSignedIn, unauthorized } from "@/lib/auth";
 import type { PromoContext, PromoResult } from "@/lib/generativePromo";
 import { runLangflowFlow, extractJsonArtifact } from "@/lib/langflowRun";
 
@@ -42,6 +43,8 @@ function getRequiredEnv(name: string): string {
 }
 
 export async function POST(req: NextRequest) {
+  if (!isSignedIn(await getAuth(req))) return unauthorized();
+
   let baseUrl: string;
   let flowId: string;
   let apiKey: string;

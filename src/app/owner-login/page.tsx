@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { IBM_Plex_Sans } from "next/font/google";
 import { ChartLineUp } from "@phosphor-icons/react";
 import TiltCard from "@/components/TiltCard";
+import { safeNextPath } from "@/lib/safeNext";
 
 // Scoped to this page only (same choice as the other pages) — not applied
 // globally in layout.tsx.
@@ -25,7 +26,7 @@ export default function OwnerLoginPage() {
 function OwnerLoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const next = searchParams.get("next") || "/dashboard";
+  const next = safeNextPath(searchParams.get("next"), "/dashboard");
 
   const [pin, setPin] = useState("");
   const [error, setError] = useState<string | null>(null);
@@ -49,7 +50,7 @@ function OwnerLoginForm() {
         setLoading(false);
         return;
       }
-      document.cookie = `ks_owner=1; path=/; max-age=${60 * 60 * 12}`;
+      // The server already set the signed session cookie (httpOnly).
       router.push(next);
       router.refresh();
     } catch {

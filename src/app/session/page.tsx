@@ -49,12 +49,6 @@ const ibmPlexSans = IBM_Plex_Sans({
 // suited to a phone screen at a food cart. All state, effects, handlers, and
 // business logic are unchanged from the original implementation.
 
-function readCookie(name: string): string | null {
-  if (typeof document === "undefined") return null;
-  const match = document.cookie.match(new RegExp(`(?:^|; )${name}=([^;]*)`));
-  return match ? decodeURIComponent(match[1]) : null;
-}
-
 interface Transaction {
   id: string;
   source: "qris" | "voice";
@@ -206,10 +200,18 @@ export default function SessionPage() {
 
   const isOpen = session?.status === "OPEN";
 
-  // ── Identitas pedagang dari cookie login (lihat /login) ────────────────────
+  // ── Identitas pedagang dari sesi login (cookie httpOnly, lihat /login) ─────
   useEffect(() => {
-    setMerchantId(readCookie("ks_merchant_id"));
-    setMerchantName(readCookie("ks_merchant_name") ?? "");
+    fetch("/api/auth/me")
+      .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+      .then((me: { merchantId: string | null; merchantName: string | null }) => {
+        if (!me.merchantId) throw new Error("no merchant session");
+        setMerchantId(me.merchantId);
+        setMerchantName(me.merchantName ?? "");
+      })
+      .catch(() => {
+        window.location.href = "/login?next=/session";
+      });
   }, []);
 
   async function handleLogout() {
